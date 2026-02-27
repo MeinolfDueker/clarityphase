@@ -1,0 +1,26 @@
+.cp-badge{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  background: var(--cp-accent);
+  color:#fff;
+  font-weight:700;
+  font-size:12px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+
+.cp-progress{
+  margin-top:6px;
+  height:8px;
+  border-radius:999px;
+  background: rgba(0,0,0,.08);
+  overflow:hidden;
+  max-width:140px;
+}
+.cp-progress__bar{
+  height:8px;
+  background: var(--cp-accent);
+  border-radius:999px;
+}
+
