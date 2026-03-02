@@ -2,7 +2,7 @@
 /*
 Plugin Name: CP License Server
 Description: License API for ClarityPhase (domain binding, expiry, plans).
-Version: 0.2.0
+Version: 0.2.1
 Author: ClarityPhase
 */
 
