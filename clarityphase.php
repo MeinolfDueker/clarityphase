@@ -1,11 +1,15 @@
 <?php
-/**
- * Plugin Name: ClarityPhase
- * Description: ClarityPhase – Das 5-Phasen-System für transparente Website-Projekte (MVP).
- * Version: 0.1.0
- * Author: DK Digitalbau
- * Text Domain: clarityphase
- */
+/*
+Plugin Name: ClarityPhase
+Description: Client Portal + Project Workflow (White-Label ready)
+Version: 0.9.0
+Author: Meinolf Düker DK-Digitalbau
+Text Domain: clarityphase
+*/
+
+if (!defined('CLARITYPHASE_VERSION')) {
+    define('CLARITYPHASE_VERSION', '0.9.0');
+}
 
 add_action('init', function () {
 
@@ -2046,41 +2050,48 @@ add_action('wp_head', function() {
 }, 60);
 
 // =====================================================
+// Assets: Version Helper
+// =====================================================
+
+function cp_asset_ver($relative_path) {
+    $path = plugin_dir_path(__FILE__) . ltrim($relative_path, '/');
+
+    // Dev: Cache-Busting über filemtime
+    if (file_exists($path)) {
+        return (string) filemtime($path);
+    }
+
+    // Fallback: Plugin-Version
+    return defined('CLARITYPHASE_VERSION') ? CLARITYPHASE_VERSION : '0.0.0';
+}
+
+// =====================================================
 // Assets: CSS sauber enqueuen (Frontend + Admin)
 // =====================================================
 
-function cp_assets_version() {
-    // Für späteres Release: gerne auf Plugin-Version umstellen.
-    // Für jetzt: filemtime sorgt für Cache-Busting bei Änderungen.
-    return '1.0.0';
-}
-
 add_action('wp_enqueue_scripts', function() {
-    $css_file = plugin_dir_path(__FILE__) . 'assets/frontend.css';
-    $ver = file_exists($css_file) ? (string) filemtime($css_file) : cp_assets_version();
 
     wp_enqueue_style(
         'clarityphase-frontend',
         plugin_dir_url(__FILE__) . 'assets/frontend.css',
         [],
-        $ver
+        cp_asset_ver('assets/frontend.css')
     );
-});
+
+}, 20);
 
 add_action('admin_enqueue_scripts', function($hook) {
-    // Optional: nur auf der Projektliste (edit.php) für cp_project laden
+
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-    if (!$screen || $screen->base !== 'edit' || $screen->post_type !== 'cp_project') {
+    if (!$screen || $screen->post_type !== 'cp_project') {
         return;
     }
-
-    $css_file = plugin_dir_path(__FILE__) . 'assets/admin.css';
-    $ver = file_exists($css_file) ? (string) filemtime($css_file) : cp_assets_version();
 
     wp_enqueue_style(
         'clarityphase-admin',
         plugin_dir_url(__FILE__) . 'assets/admin.css',
         [],
-        $ver
+        cp_asset_ver('assets/admin.css')
     );
-});
+
+}, 20);
