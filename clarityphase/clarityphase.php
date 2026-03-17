@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 0.9.2
+Version: 0.9.4
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 */
@@ -10,7 +10,7 @@ Text Domain: clarityphase
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '0.9.2');
+    define('CLARITYPHASE_VERSION', '0.9.4');
 }
 
 add_action('init', function () {
@@ -1129,9 +1129,14 @@ add_action('template_redirect', function () {
 // -------------------------------------
 // Upload + Feedback (Shortcode)
 // -------------------------------------
+function cp_pro_feature_notice() {
+    return '<div class="cp-upload-error">Dieses Feature ist nur mit einer Pro- oder Enterprise-Lizenz verfügbar.</div>';}
 add_shortcode('clarityphase_upload', function () {
 
     if (!is_user_logged_in()) return '';
+    if (!cp_pro_feature_enabled()) {
+        return '<div class="cp-upload-error">Dieses Feature ist nur mit einer Pro- oder Enterprise-Lizenz verfügbar.</div>';
+    }
 
     $project_id = function_exists('cp_get_project_page_id_for_current_user')
         ? cp_get_project_page_id_for_current_user()
@@ -1237,6 +1242,8 @@ add_shortcode('clarityphase_upload', function () {
 add_shortcode('clarityphase_upload', function () {
 
     if (!is_user_logged_in()) return '';
+    if (!cp_pro_feature_enabled()) {
+        return '<div class="cp-upload-error">Dieses Feature ist nur mit einer Pro- oder Enterprise-Lizenz verfügbar.</div>';}
 
     // Projektseite des eingeloggten Users ermitteln
     $project_id = function_exists('cp_get_project_page_id_for_current_user')
@@ -1724,37 +1731,59 @@ function cp_settings_update($key, $value) {
 }
 
 /**
+ * Pro-/Enterprise-Feature Gate
+ */
+function cp_pro_feature_enabled() {
+    return function_exists('cp_has_plan') && cp_has_plan('pro');
+}
+
+/**
  * Sanitize settings
  */
 function cp_settings_sanitize($input) {
     $defaults = cp_settings_defaults();
+    $current  = get_option('clarityphase_settings', []);
+    $current  = is_array($current) ? $current : [];
     $out = [];
 
-    $out['brand_name'] = isset($input['brand_name']) ? sanitize_text_field($input['brand_name']) : $defaults['brand_name'];
+    $pro_enabled = cp_pro_feature_enabled();
 
-    $out['logo_id'] = isset($input['logo_id']) ? (int) $input['logo_id'] : 0;
+    // Pro-only settings: in Lite preserve the stored values so they cannot be changed via crafted POSTs.
+    $out['brand_name'] = $pro_enabled
+        ? (isset($input['brand_name']) ? sanitize_text_field($input['brand_name']) : ($current['brand_name'] ?? $defaults['brand_name']))
+        : ($current['brand_name'] ?? $defaults['brand_name']);
 
-    $accent = isset($input['accent_color']) ? trim((string)$input['accent_color']) : $defaults['accent_color'];
-    // very light validation: allow hex like #RRGGBB
+    $out['logo_id'] = $pro_enabled
+        ? (isset($input['logo_id']) ? (int) $input['logo_id'] : (int) ($current['logo_id'] ?? 0))
+        : (int) ($current['logo_id'] ?? 0);
+
+    $accent = $pro_enabled
+        ? (isset($input['accent_color']) ? trim((string)$input['accent_color']) : ($current['accent_color'] ?? $defaults['accent_color']))
+        : ($current['accent_color'] ?? $defaults['accent_color']);
     if (!preg_match('/^#[0-9a-fA-F]{6}$/', $accent)) $accent = $defaults['accent_color'];
     $out['accent_color'] = $accent;
 
-    $out['portal_url'] = isset($input['portal_url']) ? esc_url_raw($input['portal_url']) : $defaults['portal_url'];
+    $out['portal_url'] = isset($input['portal_url']) ? esc_url_raw($input['portal_url']) : ($current['portal_url'] ?? $defaults['portal_url']);
+    $out['support_email'] = isset($input['support_email']) ? sanitize_email($input['support_email']) : ($current['support_email'] ?? $defaults['support_email']);
 
-    $out['support_email'] = isset($input['support_email']) ? sanitize_email($input['support_email']) : $defaults['support_email'];
+    $out['footer_text'] = $pro_enabled
+        ? (isset($input['footer_text']) ? sanitize_text_field($input['footer_text']) : ($current['footer_text'] ?? $defaults['footer_text']))
+        : ($current['footer_text'] ?? $defaults['footer_text']);
 
-    $out['footer_text'] = isset($input['footer_text']) ? sanitize_text_field($input['footer_text']) : $defaults['footer_text'];
+    $out['from_name'] = $pro_enabled
+        ? (isset($input['from_name']) ? sanitize_text_field($input['from_name']) : ($current['from_name'] ?? $defaults['from_name']))
+        : ($current['from_name'] ?? $defaults['from_name']);
 
-    $out['from_name'] = isset($input['from_name']) ? sanitize_text_field($input['from_name']) : $defaults['from_name'];
-    $out['from_email'] = isset($input['from_email']) ? sanitize_email($input['from_email']) : $defaults['from_email'];
-    $out['reply_to'] = isset($input['reply_to']) ? sanitize_email($input['reply_to']) : $defaults['reply_to'];
+    $out['from_email'] = isset($input['from_email']) ? sanitize_email($input['from_email']) : ($current['from_email'] ?? $defaults['from_email']);
+    $out['reply_to'] = isset($input['reply_to']) ? sanitize_email($input['reply_to']) : ($current['reply_to'] ?? $defaults['reply_to']);
 
-    // bcc can be comma separated list
-    $bcc = isset($input['bcc']) ? trim((string)$input['bcc']) : '';
+    $bcc = $pro_enabled
+        ? (isset($input['bcc']) ? trim((string)$input['bcc']) : (string) ($current['bcc'] ?? ''))
+        : (string) ($current['bcc'] ?? '');
     $bcc = preg_replace('/\s+/', '', $bcc);
     $out['bcc'] = $bcc;
 
-    $out['license_key'] = isset($input['license_key']) ? sanitize_text_field($input['license_key']) : '';
+    $out['license_key'] = isset($input['license_key']) ? sanitize_text_field($input['license_key']) : ($current['license_key'] ?? '');
 
     return $out;
 }
@@ -1980,6 +2009,9 @@ add_filter('wp_mail_from', function($from) {
 });
 
 add_filter('wp_mail_from_name', function($name) {
+    if (!cp_pro_feature_enabled()) {
+        return $name;
+    }
     $v = cp_setting('from_name');
     return $v ? $v : $name;
 });
@@ -2008,7 +2040,7 @@ add_action('wp_head', function() {
 
     if (!function_exists('cp_setting')) return;
 
-    $accent = cp_setting('accent_color', '#0b1630');
+    $accent = cp_pro_feature_enabled() ? cp_setting('accent_color', '#0b1630') : '#0b1630';
     $accent = preg_match('/^#[0-9a-fA-F]{6}$/', $accent) ? $accent : '#0b1630';
 
     echo "<style>:root{--cp-accent:" . esc_html($accent) . ";}</style>\n";
@@ -2021,7 +2053,7 @@ add_action('admin_head', function() {
 
     if (!function_exists('cp_setting')) return;
 
-    $accent = cp_setting('accent_color', '#0b1630');
+    $accent = cp_pro_feature_enabled() ? cp_setting('accent_color', '#0b1630') : '#0b1630';
     $accent = preg_match('/^#[0-9a-fA-F]{6}$/', $accent) ? $accent : '#0b1630';
 
     echo "<style>:root{--cp-accent:" . esc_html($accent) . ";}</style>\n";

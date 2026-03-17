@@ -2,7 +2,7 @@
 /*
 Plugin Name: CP License Server
 Description: License API for ClarityPhase (domain binding, expiry, plans).
-Version: 0.2.1
+Version: 0.2.2
 Author: ClarityPhase
 */
 
@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) { exit; }
 define('CP_LIC_CPT',            'cp_license');
 define('CP_LIC_META_KEY',       '_cp_license_key');        // stored on CPT
 define('CP_LIC_API_SECRET_OPT', 'cp_license_api_secret');  // option name (admin UI)
+define('CP_LIC_STRIPE_SECRET_OPT', 'cp_license_stripe_webhook_secret');
 
 // Optional: define this in wp-config.php to avoid storing secrets in DB
 // define('CP_LICENSE_SERVER_SECRET', '...');
@@ -166,6 +167,14 @@ add_action('admin_menu', function() {
         'cp_license_secret',
         'cp_lic_render_secret_page'
     );
+    add_submenu_page(
+        'edit.php?post_type=' . CP_LIC_CPT,
+        'Stripe Webhook',
+        'Stripe Webhook',
+        'manage_options',
+        'cp_license_stripe_webhook',
+        'cp_lic_render_stripe_page'
+    );
 }, 99);
 
 function cp_lic_render_secret_page() {
@@ -200,8 +209,30 @@ function cp_lic_render_secret_page() {
     echo '</div>';
 }
 
+function cp_lic_render_stripe_page() {
+    if (!current_user_can('manage_options')) return;
+
+    if (isset($_POST['cp_stripe_secret_nonce']) && wp_verify_nonce($_POST['cp_stripe_secret_nonce'], 'cp_stripe_secret_save')) {
+        $val = isset($_POST['cp_stripe_webhook_secret']) ? trim((string) $_POST['cp_stripe_webhook_secret']) : '';
+        update_option(CP_LIC_STRIPE_SECRET_OPT, $val, false);
+        echo '<div class="notice notice-success"><p>Stripe Webhook Secret gespeichert.</p></div>';
+    }
+
+    $secret = (string) get_option(CP_LIC_STRIPE_SECRET_OPT, '');
+    echo '<div class="wrap"><h1>Stripe Webhook</h1>';
+    echo '<form method="post">';
+    wp_nonce_field('cp_stripe_secret_save', 'cp_stripe_secret_nonce');
+    echo '<p>Webhook-Endpoint: <code>' . esc_html(home_url('/wp-json/cp-license/v1/stripe')) . '</code></p>';
+    echo '<p>Trage hier das Stripe <code>whsec_...</code> Signing Secret ein.</p>';
+    echo '<input style="width:520px" type="text" name="cp_stripe_webhook_secret" value="' . esc_attr($secret) . '" placeholder="whsec_..." /> ';
+    echo '<button class="button button-primary">Speichern</button>';
+    echo '</form>';
+    echo '<p class="description">Der Endpoint verarbeitet aktuell <code>checkout.session.completed</code>, <code>invoice.paid</code>, <code>invoice.payment_failed</code> und <code>customer.subscription.deleted</code>.</p>';
+    echo '</div>';
+}
+
 // =====================================================
-// 4) REST API: /check (Domain binding)
+// 4) REST API: /check + /stripe
 // =====================================================
 
 add_action('rest_api_init', function () {
@@ -213,6 +244,12 @@ add_action('rest_api_init', function () {
             'license_key' => ['required' => true],
             'domain'      => ['required' => true],
         ],
+    ]);
+
+    register_rest_route('cp-license/v1', '/stripe', [
+        'methods'             => WP_REST_Server::CREATABLE,
+        'permission_callback' => '__return_true',
+        'callback'            => 'cp_lic_handle_stripe_webhook',
     ]);
 });
 
@@ -379,6 +416,222 @@ if ($domain === '') {
         'domains_bound' => count($domains),
         'max_domains'   => $maxd,
     ], 200);
+}
+
+// =====================================================
+// Stripe Webhook
+// =====================================================
+function cp_lic_get_raw_request_body() {
+    $raw = file_get_contents('php://input');
+    return is_string($raw) ? $raw : '';
+}
+
+function cp_lic_verify_stripe_signature($payload, $header, $secret) {
+    if ($payload === '' || $header === '' || $secret === '') return false;
+
+    $parts = [];
+    foreach (explode(',', $header) as $pair) {
+        $pair = trim($pair);
+        if (strpos($pair, '=') === false) continue;
+        [$k, $v] = array_map('trim', explode('=', $pair, 2));
+        $parts[$k][] = $v;
+    }
+
+    $timestamp = isset($parts['t'][0]) ? (int) $parts['t'][0] : 0;
+    $signatures = $parts['v1'] ?? [];
+    if (!$timestamp || empty($signatures)) return false;
+
+    // 5 minutes tolerance
+    if (abs(time() - $timestamp) > 300) return false;
+
+    $signed_payload = $timestamp . '.' . $payload;
+    $expected = hash_hmac('sha256', $signed_payload, $secret);
+    foreach ($signatures as $sig) {
+        if (hash_equals($expected, $sig)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function cp_lic_plan_config($plan) {
+    $plan = sanitize_key((string) $plan);
+    $map = [
+        'pro' => ['plan' => 'pro', 'max_domains' => 3],
+        'enterprise' => ['plan' => 'enterprise', 'max_domains' => 10],
+        'lite' => ['plan' => 'lite', 'max_domains' => 1],
+    ];
+    return $map[$plan] ?? $map['lite'];
+}
+
+function cp_lic_plan_from_checkout_session($session) {
+    $meta_plan = sanitize_key((string) ($session['metadata']['cp_plan'] ?? ''));
+    if (in_array($meta_plan, ['pro', 'enterprise'], true)) return $meta_plan;
+
+    $amount_total = (int) ($session['amount_total'] ?? 0);
+    if ($amount_total === 56900) return 'pro';
+    if ($amount_total === 89900) return 'enterprise';
+
+    return 'lite';
+}
+
+function cp_lic_generate_key($plan = 'pro') {
+    $prefix = strtoupper($plan === 'enterprise' ? 'CP-ENT' : 'CP-PRO');
+    do {
+        $key = sprintf('%s-%s-%s', $prefix, strtoupper(wp_generate_password(4, false, false)), strtoupper(wp_generate_password(4, false, false)));
+    } while (cp_license_find_by_key($key));
+    return $key;
+}
+
+function cp_lic_find_by_customer_email($email) {
+    $email = sanitize_email($email);
+    if ($email === '') return null;
+
+    $q = new WP_Query([
+        'post_type'      => CP_LIC_CPT,
+        'post_status'    => 'any',
+        'posts_per_page' => 1,
+        'no_found_rows'  => true,
+        'fields'         => 'all',
+        'meta_query'     => [[
+            'key'     => '_cp_customer_email',
+            'value'   => $email,
+            'compare' => '=',
+        ]],
+    ]);
+    return !empty($q->posts) ? $q->posts[0] : null;
+}
+
+function cp_lic_create_or_update_from_checkout($session) {
+    $email = sanitize_email((string) ($session['customer_details']['email'] ?? $session['customer_email'] ?? ''));
+    if ($email === '') {
+        return new WP_Error('cp_stripe_missing_email', 'Customer email missing');
+    }
+
+    $plan_cfg = cp_lic_plan_config(cp_lic_plan_from_checkout_session($session));
+    $subscription_id = sanitize_text_field((string) ($session['subscription'] ?? ''));
+    $customer_id = sanitize_text_field((string) ($session['customer'] ?? ''));
+    $expires = gmdate('Y-m-d', strtotime('+1 year'));
+
+    $license = cp_lic_find_by_customer_email($email);
+    if (!$license) {
+        $license_id = wp_insert_post([
+            'post_type'   => CP_LIC_CPT,
+            'post_status' => 'publish',
+            'post_title'  => $email . ' – ' . strtoupper($plan_cfg['plan']),
+        ], true);
+        if (is_wp_error($license_id)) {
+            return $license_id;
+        }
+        $license = get_post($license_id);
+        update_post_meta($license_id, CP_LIC_META_KEY, cp_lic_generate_key($plan_cfg['plan']));
+    }
+
+    update_post_meta($license->ID, '_cp_plan', $plan_cfg['plan']);
+    update_post_meta($license->ID, '_cp_status', 'active');
+    update_post_meta($license->ID, '_cp_expires', $expires);
+    update_post_meta($license->ID, '_cp_max_domains', (int) $plan_cfg['max_domains']);
+    update_post_meta($license->ID, '_cp_customer_email', $email);
+    update_post_meta($license->ID, '_cp_stripe_customer_id', $customer_id);
+    update_post_meta($license->ID, '_cp_stripe_subscription_id', $subscription_id);
+
+    $key = (string) get_post_meta($license->ID, CP_LIC_META_KEY, true);
+
+    wp_mail(
+        $email,
+        'Dein ClarityPhase Lizenzschlüssel',
+        "Hallo,
+
+Vielen Dank für deinen Kauf.
+
+Lizenzschlüssel: {$key}
+Plan: {$plan_cfg['plan']}
+Download: " . home_url('/download/') . "
+
+Viele Grüße
+ClarityPhase"
+    );
+
+    return [
+        'license_id' => (int) $license->ID,
+        'license_key' => $key,
+        'email' => $email,
+        'plan' => $plan_cfg['plan'],
+    ];
+}
+
+function cp_lic_update_status_by_subscription($subscription_id, $status) {
+    $subscription_id = sanitize_text_field((string) $subscription_id);
+    if ($subscription_id === '') return false;
+
+    $q = new WP_Query([
+        'post_type'      => CP_LIC_CPT,
+        'post_status'    => 'any',
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+        'meta_query'     => [[
+            'key'     => '_cp_stripe_subscription_id',
+            'value'   => $subscription_id,
+            'compare' => '=',
+        ]],
+    ]);
+    if (empty($q->posts)) return false;
+
+    $license_id = (int) $q->posts[0];
+    update_post_meta($license_id, '_cp_status', sanitize_key($status));
+    if ($status === 'active') {
+        update_post_meta($license_id, '_cp_expires', gmdate('Y-m-d', strtotime('+1 year')));
+    }
+    return true;
+}
+
+function cp_lic_handle_stripe_webhook(WP_REST_Request $req) {
+    $secret = (string) get_option(CP_LIC_STRIPE_SECRET_OPT, '');
+    if ($secret === '') {
+        return new WP_REST_Response(['ok' => false, 'message' => 'Stripe secret missing'], 500);
+    }
+
+    $payload = cp_lic_get_raw_request_body();
+    $sig = (string) $req->get_header('Stripe-Signature');
+    if ($sig === '') {
+        $sig = (string) $req->get_header('stripe-signature');
+    }
+
+    if (!cp_lic_verify_stripe_signature($payload, $sig, $secret)) {
+        return new WP_REST_Response(['ok' => false, 'message' => 'Invalid Stripe signature'], 400);
+    }
+
+    $event = json_decode($payload, true);
+    if (!is_array($event) || empty($event['type'])) {
+        return new WP_REST_Response(['ok' => false, 'message' => 'Invalid event payload'], 400);
+    }
+
+    $type = (string) $event['type'];
+    $object = $event['data']['object'] ?? [];
+
+    switch ($type) {
+        case 'checkout.session.completed':
+            $result = cp_lic_create_or_update_from_checkout((array) $object);
+            if (is_wp_error($result)) {
+                return new WP_REST_Response(['ok' => false, 'message' => $result->get_error_message()], 500);
+            }
+            return new WP_REST_Response(['ok' => true, 'event' => $type, 'result' => $result], 200);
+
+        case 'invoice.paid':
+            cp_lic_update_status_by_subscription((string) ($object['subscription'] ?? ''), 'active');
+            return new WP_REST_Response(['ok' => true, 'event' => $type], 200);
+
+        case 'invoice.payment_failed':
+            cp_lic_update_status_by_subscription((string) ($object['subscription'] ?? ''), 'paused');
+            return new WP_REST_Response(['ok' => true, 'event' => $type], 200);
+
+        case 'customer.subscription.deleted':
+            $subscription_id = (string) ($object['id'] ?? '');
+            cp_lic_update_status_by_subscription($subscription_id, 'revoked');
+            return new WP_REST_Response(['ok' => true, 'event' => $type], 200);
+    }
+
+    return new WP_REST_Response(['ok' => true, 'event' => $type, 'ignored' => true], 200);
 }
 
 // =====================================================
