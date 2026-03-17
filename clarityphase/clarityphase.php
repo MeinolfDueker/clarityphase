@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 0.9.5
+Version: 0.9.6
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 */
@@ -10,7 +10,7 @@ Text Domain: clarityphase
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '0.9.5');
+    define('CLARITYPHASE_VERSION', '0.9.6');
 }
 
 add_action('init', function () {

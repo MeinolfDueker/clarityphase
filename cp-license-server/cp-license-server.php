@@ -2,7 +2,7 @@
 /*
 Plugin Name: CP License Server
 Description: License API for ClarityPhase (domain binding, expiry, plans).
-Version: 0.2.3
+Version: 0.2.4
 Author: ClarityPhase
 */
 
@@ -570,36 +570,30 @@ function cp_lic_create_or_update_from_checkout($session) {
     $customer_id = sanitize_text_field((string) ($session['customer'] ?? ''));
     $expires = gmdate('Y-m-d', strtotime('+1 year'));
 
-    $license = cp_lic_find_by_customer_email($email);
-    $is_new_license = false;
-    if (!$license) {
-        $license_id = wp_insert_post([
-            'post_type'   => CP_LIC_CPT,
-            'post_status' => 'publish',
-            'post_title'  => $email . ' – ' . strtoupper($plan_cfg['plan']),
-        ], true);
-        if (is_wp_error($license_id)) {
-            return $license_id;
-        }
-        $license = get_post($license_id);
-        update_post_meta($license_id, CP_LIC_META_KEY, cp_lic_generate_key($plan_cfg['plan']));
-        $is_new_license = true;
+    // Jeder Checkout erzeugt bewusst eine NEUE Lizenz,
+    // auch wenn dieselbe E-Mail schon einmal gekauft hat.
+    $license_id = wp_insert_post([
+        'post_type'   => CP_LIC_CPT,
+        'post_status' => 'publish',
+        'post_title'  => $email . ' – ' . strtoupper($plan_cfg['plan']) . ' – ' . gmdate('Y-m-d H:i:s'),
+    ], true);
+    if (is_wp_error($license_id)) {
+        return $license_id;
     }
 
-    update_post_meta($license->ID, '_cp_plan', $plan_cfg['plan']);
-    update_post_meta($license->ID, '_cp_status', 'active');
-    update_post_meta($license->ID, '_cp_expires', $expires);
-    update_post_meta($license->ID, '_cp_max_domains', (int) $plan_cfg['max_domains']);
-    update_post_meta($license->ID, '_cp_customer_email', $email);
-    update_post_meta($license->ID, '_cp_stripe_customer_id', $customer_id);
-    update_post_meta($license->ID, '_cp_stripe_subscription_id', $subscription_id);
+    $license = get_post($license_id);
+    $key = cp_lic_generate_key($plan_cfg['plan']);
 
-    $key = (string) get_post_meta($license->ID, CP_LIC_META_KEY, true);
+    update_post_meta($license_id, CP_LIC_META_KEY, $key);
+    update_post_meta($license_id, '_cp_plan', $plan_cfg['plan']);
+    update_post_meta($license_id, '_cp_status', 'active');
+    update_post_meta($license_id, '_cp_expires', $expires);
+    update_post_meta($license_id, '_cp_max_domains', (int) $plan_cfg['max_domains']);
+    update_post_meta($license_id, '_cp_customer_email', $email);
+    update_post_meta($license_id, '_cp_stripe_customer_id', $customer_id);
+    update_post_meta($license_id, '_cp_stripe_subscription_id', $subscription_id);
 
-    // Mail on first successful checkout or when key was missing.
-    if ($is_new_license || $key !== '') {
-        cp_lic_send_license_email($email, $plan_cfg['plan'], $key, $expires);
-    }
+    cp_lic_send_license_email($email, $plan_cfg['plan'], $key, $expires);
 
     return [
         'license_id' => (int) $license->ID,
