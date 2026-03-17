@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 0.9.6
+Version: 0.9.2
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 */
@@ -10,7 +10,7 @@ Text Domain: clarityphase
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '0.9.6');
+    define('CLARITYPHASE_VERSION', '0.9.2');
 }
 
 add_action('init', function () {
@@ -1238,10 +1238,6 @@ add_shortcode('clarityphase_upload', function () {
 
     if (!is_user_logged_in()) return '';
 
-    if (!function_exists('cp_has_plan') || !cp_has_plan('pro')) {
-        return '<div class="cp-upload-error">Diese Funktion ist nur in der Pro-Version verfügbar.</div>';
-    }
-
     // Projektseite des eingeloggten Users ermitteln
     $project_id = function_exists('cp_get_project_page_id_for_current_user')
         ? (int) cp_get_project_page_id_for_current_user()
@@ -1713,12 +1709,6 @@ function cp_setting($key, $fallback = null) {
     $opts = get_option('clarityphase_settings', []);
     $opts = is_array($opts) ? $opts : [];
     $defaults = cp_settings_defaults();
-
-    $pro_only_keys = ['brand_name', 'logo_id', 'accent_color', 'from_name', 'footer_text', 'bcc'];
-    if (in_array($key, $pro_only_keys, true) && function_exists('cp_has_plan') && !cp_has_plan('pro')) {
-        return $defaults[$key] ?? $fallback;
-    }
-
     $val = $opts[$key] ?? $defaults[$key] ?? $fallback;
     return $val;
 }
@@ -1766,13 +1756,6 @@ function cp_settings_sanitize($input) {
 
     $out['license_key'] = isset($input['license_key']) ? sanitize_text_field($input['license_key']) : '';
 
-    $pro_only_keys = ['brand_name', 'logo_id', 'accent_color', 'from_name', 'footer_text', 'bcc'];
-    if (!function_exists('cp_has_plan') || !cp_has_plan('pro')) {
-        foreach ($pro_only_keys as $pro_key) {
-            $out[$pro_key] = $defaults[$pro_key];
-        }
-    }
-
     return $out;
 }
 
@@ -1802,27 +1785,27 @@ add_action('admin_init', function() {
     // =====================================================
     // 2) LITE: Basis-Einstellungen (immer sichtbar)
     // =====================================================
-    add_settings_section('cp_sec_core', 'Basis (Lite)', function() {
-        echo '<p>Technische Grundeinstellungen für Portal & Versand.</p>';
+    add_settings_section('cp_sec_core', esc_html__('Basis (Lite)', 'clarityphase'), function() {
+        echo '<p>' . esc_html__('Technische Grundeinstellungen für Portal & Versand.', 'clarityphase') . '</p>';
     }, 'clarityphase_settings');
 
-    add_settings_field('cp_portal_url', 'Portal URL', 'cp_field_portal_url', 'clarityphase_settings', 'cp_sec_core');
-    add_settings_field('cp_support_email', 'Support E-Mail', 'cp_field_support_email', 'clarityphase_settings', 'cp_sec_core');
+    add_settings_field('cp_portal_url', esc_html__('Portal URL', 'clarityphase'), 'cp_field_portal_url', 'clarityphase_settings', 'cp_sec_core');
+    add_settings_field('cp_support_email', esc_html__('Support E-Mail', 'clarityphase'), 'cp_field_support_email', 'clarityphase_settings', 'cp_sec_core');
 
     // Mail-Basics: technisch notwendig -> Lite
-    add_settings_field('cp_from_email', 'From E-Mail', 'cp_field_from_email', 'clarityphase_settings', 'cp_sec_core');
-    add_settings_field('cp_reply_to', 'Reply-To', 'cp_field_reply_to', 'clarityphase_settings', 'cp_sec_core');
+    add_settings_field('cp_from_email', esc_html__('From E-Mail', 'clarityphase'), 'cp_field_from_email', 'clarityphase_settings', 'cp_sec_core');
+    add_settings_field('cp_reply_to', esc_html__('Reply-To', 'clarityphase'), 'cp_field_reply_to', 'clarityphase_settings', 'cp_sec_core');
 
     // =====================================================
     // 3) Lizenz (immer sichtbar)
     // =====================================================
-    add_settings_section('cp_sec_license', 'Lizenz', function() {
-        echo '<p>Lizenzprüfung für Pro/Enterprise Features.</p>';
+    add_settings_section('cp_sec_license', esc_html__('Lizenz', 'clarityphase'), function() {
+        echo '<p>' . esc_html__('Lizenzprüfung für Pro/Enterprise Features.', 'clarityphase') . '</p>';
     }, 'clarityphase_settings');
 
     add_settings_field(
         'cp_license_key',
-        'Lizenzschlüssel',
+        esc_html__('Lizenzschlüssel', 'clarityphase'),
         'cp_field_license_key',
         'clarityphase_settings',
         'cp_sec_license'
@@ -1833,12 +1816,12 @@ add_action('admin_init', function() {
     // =====================================================
     if (!function_exists('cp_has_plan') || !cp_has_plan('pro')) {
 
-        add_settings_section('cp_sec_locked', 'Pro Features', function() {
-            echo '<div style="padding:14px 16px;background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;max-width:820px;">
-                    <strong>Pro Version erforderlich</strong><br><br>
-                    Branding (Logo/Farben), Brand Name und erweiterte Mail-Anpassungen sind nur in <b>Pro</b> verfügbar.<br>
-                    Hinterlege einen gültigen Lizenzschlüssel und klicke auf <b>Lizenz prüfen</b>.
-                  </div>';
+        add_settings_section('cp_sec_locked', esc_html__('Pro Features', 'clarityphase'), function() {
+            echo '<div style="padding:14px 16px;background:#fff3cd;border:1px solid #ffeeba;border-radius:8px;max-width:820px;">';
+            echo '<strong>' . esc_html__('Pro Version erforderlich', 'clarityphase') . '</strong><br><br>';
+            echo esc_html__('Branding (Logo/Farben), Brand Name und erweiterte Mail-Anpassungen sind nur in Pro verfügbar.', 'clarityphase') . '<br>';
+            echo esc_html__('Hinterlege einen gültigen Lizenzschlüssel und klicke auf „Lizenz prüfen“.', 'clarityphase');
+            echo '</div>';
         }, 'clarityphase_settings');
 
         return; // stoppt hier -> keine Pro Felder
@@ -1847,24 +1830,24 @@ add_action('admin_init', function() {
     // =====================================================
     // 5) PRO: Branding / White-Label
     // =====================================================
-    add_settings_section('cp_sec_brand', 'Branding (Pro)', function() {
-        echo '<p>White-Label Branding für Portal & E-Mails.</p>';
+    add_settings_section('cp_sec_brand', esc_html__('Branding (Pro)', 'clarityphase'), function() {
+        echo '<p>' . esc_html__('White-Label Branding für Portal & E-Mails.', 'clarityphase') . '</p>';
     }, 'clarityphase_settings');
 
-    add_settings_field('cp_brand_name', 'Brand Name', 'cp_field_brand_name', 'clarityphase_settings', 'cp_sec_brand');
-    add_settings_field('cp_logo_id', 'Logo', 'cp_field_logo', 'clarityphase_settings', 'cp_sec_brand');
-    add_settings_field('cp_accent_color', 'Accent Farbe', 'cp_field_accent', 'clarityphase_settings', 'cp_sec_brand');
+    add_settings_field('cp_brand_name', esc_html__('Brand Name', 'clarityphase'), 'cp_field_brand_name', 'clarityphase_settings', 'cp_sec_brand');
+    add_settings_field('cp_logo_id', esc_html__('Logo', 'clarityphase'), 'cp_field_logo', 'clarityphase_settings', 'cp_sec_brand');
+    add_settings_field('cp_accent_color', esc_html__('Accent Farbe', 'clarityphase'), 'cp_field_accent', 'clarityphase_settings', 'cp_sec_brand');
 
     // =====================================================
     // 6) PRO: Mail Branding (nicht technisch nötig)
     // =====================================================
-    add_settings_section('cp_sec_mail_pro', 'E-Mail Branding (Pro)', function() {
-        echo '<p>Optische/Marken-Anpassungen für E-Mails.</p>';
+    add_settings_section('cp_sec_mail_pro', esc_html__('E-Mail Branding (Pro)', 'clarityphase'), function() {
+        echo '<p>' . esc_html__('Optische/Marken-Anpassungen für E-Mails.', 'clarityphase') . '</p>';
     }, 'clarityphase_settings');
 
-    add_settings_field('cp_from_name', 'From Name', 'cp_field_from_name', 'clarityphase_settings', 'cp_sec_mail_pro');
-    add_settings_field('cp_footer_text', 'E-Mail Footer Text', 'cp_field_footer_text', 'clarityphase_settings', 'cp_sec_mail_pro');
-    add_settings_field('cp_bcc', 'BCC (optional)', 'cp_field_bcc', 'clarityphase_settings', 'cp_sec_mail_pro');
+    add_settings_field('cp_from_name', esc_html__('From Name', 'clarityphase'), 'cp_field_from_name', 'clarityphase_settings', 'cp_sec_mail_pro');
+    add_settings_field('cp_footer_text', esc_html__('E-Mail Footer Text', 'clarityphase'), 'cp_field_footer_text', 'clarityphase_settings', 'cp_sec_mail_pro');
+    add_settings_field('cp_bcc', esc_html__('BCC (optional)', 'clarityphase'), 'cp_field_bcc', 'clarityphase_settings', 'cp_sec_mail_pro');
 
 });
 
@@ -1879,7 +1862,7 @@ function cp_field_brand_name() {
 function cp_field_portal_url() {
     $val = esc_attr(cp_setting('portal_url'));
     echo '<input type="url" name="clarityphase_settings[portal_url]" value="'.$val.'" class="regular-text" />';
-    echo '<p class="description">Wird in Status-Mails verlinkt.</p>';
+    echo '<p class="description">' . esc_html__('Wird in Status-Mails verlinkt.', 'clarityphase') . '</p>';
 }
 
 function cp_field_support_email() {
@@ -1910,13 +1893,13 @@ function cp_field_reply_to() {
 function cp_field_bcc() {
     $val = esc_attr(cp_setting('bcc'));
     echo '<input type="text" name="clarityphase_settings[bcc]" value="'.$val.'" class="regular-text" />';
-    echo '<p class="description">Mehrere Empfänger mit Komma trennen.</p>';
+    echo '<p class="description">' . esc_html__('Mehrere Empfänger mit Komma trennen.', 'clarityphase') . '</p>';
 }
 
 function cp_field_accent() {
     $val = esc_attr(cp_setting('accent_color'));
     echo '<input type="text" name="clarityphase_settings[accent_color]" value="'.$val.'" class="regular-text" />';
-    echo '<p class="description">Format: #RRGGBB (z.B. #0b1630)</p>';
+    echo '<p class="description">' . esc_html__('Format: #RRGGBB (z.B. #0b1630)', 'clarityphase') . '</p>';
 }
 
 function cp_field_logo() {
@@ -1927,16 +1910,16 @@ function cp_field_logo() {
     if ($url) {
         echo '<img src="'.esc_url($url).'" style="max-width:100%;height:auto;" alt="" />';
     } else {
-        echo '<span style="opacity:.6;">Kein Logo</span>';
+        echo '<span style="opacity:.6;">' . esc_html__('Kein Logo', 'clarityphase') . '</span>';
     }
     echo '</div>';
     echo '<div>';
     echo '<input type="hidden" id="cp_logo_id" name="clarityphase_settings[logo_id]" value="'.esc_attr($logo_id).'" />';
-    echo '<button type="button" class="button" id="cp_logo_pick">Logo wählen</button> ';
-    echo '<button type="button" class="button" id="cp_logo_remove">Entfernen</button>';
+    echo '<button type="button" class="button" id="cp_logo_pick">' . esc_html__('Logo wählen', 'clarityphase') . '</button> ';
+    echo '<button type="button" class="button" id="cp_logo_remove">' . esc_html__('Entfernen', 'clarityphase') . '</button>';
     echo '</div>';
     echo '</div>';
-    echo '<p class="description">Logo wird später im Portal/Emails genutzt (V1: Settings + CSS).</p>';
+    echo '<p class="description">' . esc_html__('Logo wird später im Portal/Emails genutzt (V1: Settings + CSS).', 'clarityphase') . '</p>';
 }
 
 // ---------------------------
@@ -1946,11 +1929,11 @@ function cp_render_settings_page() {
     if (!current_user_can('manage_options')) return;
 
     echo '<div class="wrap">';
-    echo '<h1>ClarityPhase – Einstellungen (White-Label)</h1>';
+    echo '<h1>' . esc_html__('ClarityPhase – Einstellungen (White-Label)', 'clarityphase') . '</h1>';
     echo '<form method="post" action="options.php">';
     settings_fields('clarityphase_settings_group');
     do_settings_sections('clarityphase_settings');
-    submit_button('Speichern');
+    submit_button(esc_html__('Speichern', 'clarityphase'));
     echo '</form>';
     echo '</div>';
 }
@@ -1968,8 +1951,8 @@ add_action('admin_enqueue_scripts', function($hook) {
             e.preventDefault();
             if(frame){ frame.open(); return; }
             frame = wp.media({
-                title: 'Logo auswählen',
-                button: { text: 'Übernehmen' },
+                title: '' + esc_js(__('Logo auswählen', 'clarityphase')) + '',
+                button: { text: '' + esc_js(__('Übernehmen', 'clarityphase')) + '' },
                 multiple: false
             });
             frame.on('select', function(){
@@ -2263,7 +2246,7 @@ function cp_check_license($force = false) {
             'ok'         => false,
             'status'     => 'unchecked',
             'plan'       => 'lite',
-            'message'    => 'Kein Lizenzschlüssel hinterlegt.',
+            'message'    => __('Kein Lizenzschlüssel hinterlegt.', 'clarityphase'),
             'checked_at' => time(),
         ];
         cp_set_license_status_cached($out);
@@ -2393,7 +2376,7 @@ function cp_field_license_key() {
     $val  = isset($opts['license_key']) ? esc_attr($opts['license_key']) : '';
 
     echo '<input type="text" name="clarityphase_settings[license_key]" value="'.$val.'" class="regular-text" />';
-    echo '<p class="description">Lizenzschlüssel für Pro/Enterprise Features.</p>';
+    echo '<p class="description">' . esc_html__('Lizenzschlüssel für Pro/Enterprise Features.', 'clarityphase') . '</p>';
 
     $st = cp_get_license_status_cached();
     $status = isset($st['status']) ? $st['status'] : 'unchecked';
@@ -2402,12 +2385,12 @@ function cp_field_license_key() {
     $exp    = isset($st['expires']) ? $st['expires'] : '';
 
     echo '<div style="margin-top:10px;padding:10px;border:1px solid #ddd;background:#fff;max-width:720px;">';
-    echo '<strong>Lizenz Status:</strong> ' . esc_html($status) . ' &nbsp; <strong>Plan:</strong> ' . esc_html($plan);
-    if ($exp) echo ' &nbsp; <strong>Expires:</strong> ' . esc_html($exp);
+    echo '<strong>' . esc_html__('Lizenz Status:', 'clarityphase') . '</strong> ' . esc_html($status) . ' &nbsp; <strong>' . esc_html__('Plan:', 'clarityphase') . '</strong> ' . esc_html($plan);
+    if ($exp) echo ' &nbsp; <strong>' . esc_html__('Ablauf:', 'clarityphase') . '</strong> ' . esc_html($exp);
     if ($msg) echo '<div style="margin-top:6px;opacity:.85;">' . esc_html($msg) . '</div>';
 
     $url = wp_nonce_url(admin_url('admin-post.php?action=cp_check_license'), 'cp_check_license');
-    echo '<p style="margin-top:10px;"><a class="button" href="'.esc_url($url).'">Lizenz prüfen</a></p>';
+    echo '<p style="margin-top:10px;"><a class="button" href="'.esc_url($url).'">' . esc_html__('Lizenz prüfen', 'clarityphase') . '</a></p>';
     echo '</div>';
 }
 
