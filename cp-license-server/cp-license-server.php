@@ -2,7 +2,7 @@
 /*
 Plugin Name: CP License Server
 Description: License API for ClarityPhase (domain binding, expiry, plans).
-Version: 0.2.2
+Version: 0.2.3
 Author: ClarityPhase
 */
 
@@ -15,6 +15,8 @@ define('CP_LIC_CPT',            'cp_license');
 define('CP_LIC_META_KEY',       '_cp_license_key');        // stored on CPT
 define('CP_LIC_API_SECRET_OPT', 'cp_license_api_secret');  // option name (admin UI)
 define('CP_LIC_STRIPE_SECRET_OPT', 'cp_license_stripe_webhook_secret');
+define('CP_LIC_MAIL_FROM_NAME', 'ClarityPhase');
+define('CP_LIC_MAIL_FROM_EMAIL', 'support@clarity-phase.com');
 
 // Optional: define this in wp-config.php to avoid storing secrets in DB
 // define('CP_LICENSE_SERVER_SECRET', '...');
@@ -502,6 +504,61 @@ function cp_lic_find_by_customer_email($email) {
     return !empty($q->posts) ? $q->posts[0] : null;
 }
 
+function cp_lic_send_license_email($to, $plan, $license_key, $expires) {
+    $to = sanitize_email((string) $to);
+    if ($to === '') {
+        return false;
+    }
+
+    $download_url = home_url('/download/');
+    $subject = 'Ihre ClarityPhase Lizenz wurde erstellt';
+    $message = "Hallo,
+
+";
+    $message .= "vielen Dank für Ihren Kauf von ClarityPhase.
+
+";
+    $message .= "Ihre Lizenz wurde erfolgreich erstellt.
+
+";
+    $message .= "Lizenztyp: {$plan}
+";
+    $message .= "Lizenzschlüssel: {$license_key}
+";
+    $message .= "Gültig bis: {$expires}
+
+";
+    $message .= "Download:
+{$download_url}
+
+";
+    $message .= "So aktivieren Sie Ihre Lizenz:
+";
+    $message .= "1. Laden Sie das Plugin herunter
+";
+    $message .= "2. Installieren Sie es in WordPress
+";
+    $message .= "3. Öffnen Sie die ClarityPhase Einstellungen
+";
+    $message .= "4. Tragen Sie Ihren Lizenzschlüssel ein
+";
+    $message .= "5. Klicken Sie auf \"Lizenz prüfen\"\n\n";
+    $message .= "Nach erfolgreicher Aktivierung werden die Funktionen Ihrer Lizenz automatisch freigeschaltet.
+
+";
+    $message .= "Viele Grüße
+";
+    $message .= CP_LIC_MAIL_FROM_NAME;
+
+    $headers = [
+        'Content-Type: text/plain; charset=UTF-8',
+        'From: ' . CP_LIC_MAIL_FROM_NAME . ' <' . CP_LIC_MAIL_FROM_EMAIL . '>',
+        'Reply-To: ' . CP_LIC_MAIL_FROM_NAME . ' <' . CP_LIC_MAIL_FROM_EMAIL . '>',
+    ];
+
+    return wp_mail($to, $subject, $message, $headers);
+}
+
 function cp_lic_create_or_update_from_checkout($session) {
     $email = sanitize_email((string) ($session['customer_details']['email'] ?? $session['customer_email'] ?? ''));
     if ($email === '') {
@@ -514,6 +571,7 @@ function cp_lic_create_or_update_from_checkout($session) {
     $expires = gmdate('Y-m-d', strtotime('+1 year'));
 
     $license = cp_lic_find_by_customer_email($email);
+    $is_new_license = false;
     if (!$license) {
         $license_id = wp_insert_post([
             'post_type'   => CP_LIC_CPT,
@@ -525,6 +583,7 @@ function cp_lic_create_or_update_from_checkout($session) {
         }
         $license = get_post($license_id);
         update_post_meta($license_id, CP_LIC_META_KEY, cp_lic_generate_key($plan_cfg['plan']));
+        $is_new_license = true;
     }
 
     update_post_meta($license->ID, '_cp_plan', $plan_cfg['plan']);
@@ -537,26 +596,17 @@ function cp_lic_create_or_update_from_checkout($session) {
 
     $key = (string) get_post_meta($license->ID, CP_LIC_META_KEY, true);
 
-    wp_mail(
-        $email,
-        'Dein ClarityPhase Lizenzschlüssel',
-        "Hallo,
-
-Vielen Dank für deinen Kauf.
-
-Lizenzschlüssel: {$key}
-Plan: {$plan_cfg['plan']}
-Download: " . home_url('/download/') . "
-
-Viele Grüße
-ClarityPhase"
-    );
+    // Mail on first successful checkout or when key was missing.
+    if ($is_new_license || $key !== '') {
+        cp_lic_send_license_email($email, $plan_cfg['plan'], $key, $expires);
+    }
 
     return [
         'license_id' => (int) $license->ID,
         'license_key' => $key,
         'email' => $email,
         'plan' => $plan_cfg['plan'],
+        'expires' => $expires,
     ];
 }
 
