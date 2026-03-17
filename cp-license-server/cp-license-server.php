@@ -2,9 +2,10 @@
 /*
 Plugin Name: CP License Server
 Description: License API for ClarityPhase (domain binding, expiry, plans).
-Version: 0.2.1
+Version: 0.2.5
 Author: ClarityPhase
 Text Domain: cp-license-server
+Domain Path: /languages
 */
 
 if (!defined('ABSPATH')) { exit; }
