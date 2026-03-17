@@ -8,8 +8,6 @@ Text Domain: cp-license-server
 Domain Path: /languages
 */
 
-if (!defined('ABSPATH')) { exit; }
-
 add_action('plugins_loaded', function () {
     load_plugin_textdomain(
         'cp-license-server',
@@ -17,6 +15,8 @@ add_action('plugins_loaded', function () {
         dirname(plugin_basename(__FILE__)) . '/languages'
     );
 });
+
+if (!defined('ABSPATH')) { exit; }
 
 // =====================================================
 // Constants
