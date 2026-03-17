@@ -2,11 +2,21 @@
 /*
 Plugin Name: CP License Server
 Description: License API for ClarityPhase (domain binding, expiry, plans).
-Version: 0.2.4
+Version: 0.2.5
 Author: ClarityPhase
+Text Domain: cp-license-server
+Domain Path: /languages
 */
 
 if (!defined('ABSPATH')) { exit; }
+
+add_action('plugins_loaded', function () {
+    load_plugin_textdomain(
+        'cp-license-server',
+        false,
+        dirname(plugin_basename(__FILE__)) . '/languages'
+    );
+});
 
 // =====================================================
 // Constants
