@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 0.9.8
+Version: 0.9.9
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '0.9.8');
+    define('CLARITYPHASE_VERSION', '0.9.9');
 }
 
 add_action('plugins_loaded', function () {
@@ -26,8 +26,8 @@ add_action('init', function () {
 
     register_post_type('cp_project', [
         'labels' => [
-            'name' => 'ClarityPhase Projekte',
-            'singular_name' => 'Projekt',
+            'name' => __('ClarityPhase Projekte', 'clarityphase'),
+            'singular_name' => __('Projekt', 'clarityphase'),
         ],
         'public' => false,
         'show_ui' => true,
@@ -58,7 +58,7 @@ if (!defined('CP_LICENSE_CLIENT_SECRET')) {
 add_action('add_meta_boxes', function () {
     add_meta_box(
         'cp_project_details',
-        'Projekt Details',
+        __('Projekt Details', 'clarityphase'),
         'cp_render_project_details_metabox',
         'cp_project',
         'normal',
@@ -89,11 +89,11 @@ function cp_render_project_details_metabox($post) {
     ]);
 
     $status_choices = [
-        'analyse_briefing' => 'Analyse & Briefing',
-        'struktur_konzept' => 'Struktur & Konzept',
-        'umsetzung'        => 'Umsetzung',
-        'review_feedback'  => 'Review & Feedback',
-        'launch_abschluss' => 'Launch & Abschluss',
+        'analyse_briefing' => __('Analyse & Briefing', 'clarityphase'),
+        'struktur_konzept' => __('Struktur & Konzept', 'clarityphase'),
+        'umsetzung'        => __('Umsetzung', 'clarityphase'),
+        'review_feedback'  => __('Review & Feedback', 'clarityphase'),
+        'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
 
     ?>
@@ -116,34 +116,34 @@ function cp_render_project_details_metabox($post) {
     <div class="cp-grid">
 
       <div class="cp-field">
-        <label for="cp_owner_id">Kunde / Seitenbesitzer</label>
+        <label for="cp_owner_id"><?php echo esc_html__('Kunde / Seitenbesitzer', 'clarityphase'); ?></label>
         <select name="cp_owner_id" id="cp_owner_id">
-          <option value="">— auswählen —</option>
+          <option value=""><?php echo esc_html__('— auswählen —', 'clarityphase'); ?></option>
           <?php foreach ($users as $u): ?>
             <option value="<?php echo (int)$u->ID; ?>" <?php selected($owner_id, (int)$u->ID); ?>>
               <?php echo esc_html($u->display_name . ' (' . $u->user_email . ')'); ?>
             </option>
           <?php endforeach; ?>
         </select>
-        <div class="cp-help">Wem gehört dieses Projekt? Dieser User sieht es im Portal.</div>
+        <div class="cp-help"><?php echo esc_html__('Wem gehört dieses Projekt? Dieser User sieht es im Portal.', 'clarityphase'); ?></div>
       </div>
 
      <div class="cp-field">
- 	<label for="cp_project_page_id">Projektseite (WordPress Seite)</label>
+ 	<label for="cp_project_page_id"><?php echo esc_html__('Projektseite (WordPress Seite)', 'clarityphase'); ?></label>
   	<?php
     		wp_dropdown_pages([
       		'name'              => 'cp_project_page_id',
       		'id'                => 'cp_project_page_id',
       		'selected'          => $project_page_id,
-      		'show_option_none'  => '— auswählen —',
+      		'show_option_none'  => __('— auswählen —', 'clarityphase'),
       		'option_none_value' => '',
     	]);
      ?>
-     <div class="cp-help">Diese Seite öffnet der Button „Zum Projekt“.</div>
+     <div class="cp-help"><?php echo esc_html__('Diese Seite öffnet der Button „Zum Projekt“.', 'clarityphase'); ?></div>
    </div>
 
       <div class="cp-field">
-        <label for="cp_status">Projektstatus (Phase)</label>
+        <label for="cp_status"><?php echo esc_html__('Projektstatus (Phase)', 'clarityphase'); ?></label>
         <select name="cp_status" id="cp_status">
           <?php foreach ($status_choices as $key => $label): ?>
             <option value="<?php echo esc_attr($key); ?>" <?php selected($status, $key); ?>>
@@ -151,24 +151,24 @@ function cp_render_project_details_metabox($post) {
             </option>
           <?php endforeach; ?>
         </select>
-        <div class="cp-help">Die Phase steuert Workflow & Status-Anzeige im Portal.</div>
+        <div class="cp-help"><?php echo esc_html__('Die Phase steuert Workflow & Status-Anzeige im Portal.', 'clarityphase'); ?></div>
       </div>
 
       <div class="cp-field">
-        <label for="cp_progress">Fortschritt (%)</label>
+        <label for="cp_progress"><?php echo esc_html__('Fortschritt (%)', 'clarityphase'); ?></label>
         <input type="number" name="cp_progress" id="cp_progress" min="0" max="100" value="<?php echo esc_attr($progress); ?>">
         <div class="cp-help">0–100</div>
       </div>
 
       <div class="cp-field">
-        <label for="cp_deadline">Deadline</label>
+        <label for="cp_deadline"><?php echo esc_html__('Deadline', 'clarityphase'); ?></label>
         <input type="date" name="cp_deadline" id="cp_deadline" value="<?php echo esc_attr($deadline); ?>">
-        <div class="cp-help">Optional – später können wir Reminder bauen.</div>
+        <div class="cp-help"><?php echo esc_html__('Optional – später können wir Reminder bauen.', 'clarityphase'); ?></div>
       </div>
 
       <div class="cp-field" style="grid-column:1/-1;">
-        <label for="cp_next_step">Nächster Schritt</label>
-        <textarea name="cp_next_step" id="cp_next_step" placeholder="z.B. Bitte fehlende Bilder bis Freitag hochladen."><?php echo esc_textarea($next_step); ?></textarea>
+        <label for="cp_next_step"><?php echo esc_html__('Nächster Schritt', 'clarityphase'); ?></label>
+        <textarea name="cp_next_step" id="cp_next_step" placeholder="<?php echo esc_attr__('z.B. Bitte fehlende Bilder bis Freitag hochladen.', 'clarityphase'); ?>"><?php echo esc_textarea($next_step); ?></textarea>
       </div>
 
     </div>
@@ -188,11 +188,11 @@ add_filter('manage_cp_project_posts_columns', function ($columns) {
     if (isset($columns['cb']))    $new['cb'] = $columns['cb'];
     if (isset($columns['title'])) $new['title'] = $columns['title'];
 
-    $new['cp_owner']    = 'Kunde';
-    $new['cp_status']   = 'Status';
-    $new['cp_progress'] = 'Fortschritt';
-    $new['cp_deadline'] = 'Deadline';
-    $new['cp_page']     = 'Projektseite';
+    $new['cp_owner']    = __('Kunde', 'clarityphase');
+    $new['cp_status']   = __('Status', 'clarityphase');
+    $new['cp_progress'] = __('Fortschritt', 'clarityphase');
+    $new['cp_deadline'] = __('Deadline', 'clarityphase');
+    $new['cp_page']     = __('Projektseite', 'clarityphase');
 
     // Datum am Ende lassen (falls vorhanden)
     if (isset($columns['date'])) $new['date'] = $columns['date'];
@@ -221,11 +221,11 @@ add_action('manage_cp_project_posts_custom_column', function ($column, $post_id)
     if ($status === '') { echo '<span style="opacity:.6;">—</span>'; return; }
 
     $labels = [
-        'analyse_briefing' => 'Analyse & Briefing',
-        'struktur_konzept' => 'Struktur & Konzept',
-        'umsetzung'        => 'Umsetzung',
-        'review_feedback'  => 'Review & Feedback',
-        'launch_abschluss' => 'Launch & Abschluss',
+        'analyse_briefing' => __('Analyse & Briefing', 'clarityphase'),
+        'struktur_konzept' => __('Struktur & Konzept', 'clarityphase'),
+        'umsetzung'        => __('Umsetzung', 'clarityphase'),
+        'review_feedback'  => __('Review & Feedback', 'clarityphase'),
+        'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
     $label = $labels[$status] ?? $status;
 
@@ -272,20 +272,20 @@ add_action('manage_cp_project_posts_custom_column', function ($column, $post_id)
     if ($days < 0) {
         // überfällig
         echo '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#ffebee;color:#b71c1c;font-weight:700;font-size:12px;">'
-            . esc_html($display) . ' · Überfällig</span>';
+            . esc_html($display) . ' · ' . esc_html__('Überfällig', 'clarityphase') . '</span>';
         return;
     }
 
     if ($days === 0) {
         // heute
         echo '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#fff3e0;color:#e65100;font-weight:700;font-size:12px;">'
-            . esc_html($display) . ' · Heute</span>';
+            . esc_html($display) . ' · ' . esc_html__('Heute', 'clarityphase') . '</span>';
         return;
     }
 
     if ($days <= 7) {
         // bald
-        $label = ($days === 1) ? 'Tag' : 'Tagen';
+        $label = ($days === 1) ? __('Tag', 'clarityphase') : __('Tagen', 'clarityphase');
 
         echo '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#fff8e1;color:#8d6e00;font-weight:700;font-size:12px;">'
             . esc_html($display) . ' · in ' . esc_html($days) . ' ' . $label . '</span>';
@@ -373,12 +373,12 @@ add_action('current_screen', function($screen) {
         $current = isset($_GET['cp_status_filter']) ? sanitize_text_field($_GET['cp_status_filter']) : '';
 
         $options = [
-            ''                 => 'Alle Status',
-            'analyse_briefing' => 'Analyse & Briefing',
-            'struktur_konzept' => 'Struktur & Konzept',
-            'umsetzung'        => 'Umsetzung',
-            'review_feedback'  => 'Review & Feedback',
-            'launch_abschluss' => 'Launch & Abschluss',
+            ''                 => __('Alle Status', 'clarityphase'),
+            'analyse_briefing' => __('Analyse & Briefing', 'clarityphase'),
+            'struktur_konzept' => __('Struktur & Konzept', 'clarityphase'),
+            'umsetzung'        => __('Umsetzung', 'clarityphase'),
+            'review_feedback'  => __('Review & Feedback', 'clarityphase'),
+            'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
         ];
 
         echo '<select name="cp_status_filter">';
@@ -395,12 +395,12 @@ add_action('current_screen', function($screen) {
         $current_deadline = isset($_GET['cp_deadline_filter']) ? sanitize_text_field($_GET['cp_deadline_filter']) : '';
 
         echo '<select name="cp_deadline_filter" style="margin-left:8px;">';
-        echo '<option value=""' . selected($current_deadline, '', false) . '>Alle Deadlines</option>';
-        echo '<option value="overdue"' . selected($current_deadline, 'overdue', false) . '>Überfällig</option>';
-        echo '<option value="today"' . selected($current_deadline, 'today', false) . '>Heute</option>';
-        echo '<option value="next7"' . selected($current_deadline, 'next7', false) . '>Nächste 7 Tage</option>';
-        echo '<option value="next30"' . selected($current_deadline, 'next30', false) . '>Nächste 30 Tage</option>';
-        echo '<option value="none"' . selected($current_deadline, 'none', false) . '>Ohne Deadline</option>';
+        echo '<option value=""' . selected($current_deadline, '', false) . '>' . esc_html__('Alle Deadlines', 'clarityphase') . '</option>';
+        echo '<option value="overdue"' . selected($current_deadline, 'overdue', false) . '>' . esc_html__('Überfällig', 'clarityphase') . '</option>';
+        echo '<option value="today"' . selected($current_deadline, 'today', false) . '>' . esc_html__('Heute', 'clarityphase') . '</option>';
+        echo '<option value="next7"' . selected($current_deadline, 'next7', false) . '>' . esc_html__('Nächste 7 Tage', 'clarityphase') . '</option>';
+        echo '<option value="next30"' . selected($current_deadline, 'next30', false) . '>' . esc_html__('Nächste 30 Tage', 'clarityphase') . '</option>';
+        echo '<option value="none"' . selected($current_deadline, 'none', false) . '>' . esc_html__('Ohne Deadline', 'clarityphase') . '</option>';
         echo '</select>';
 
     });
@@ -442,9 +442,9 @@ add_action('current_screen', function($screen) {
         <fieldset class="inline-edit-col-right">
           <div class="inline-edit-col">
             <label class="alignleft">
-              <span class="title">Status</span>
+              <span class="title"><?php echo esc_html__('Status', 'clarityphase'); ?></span>
               <select name="cp_status">
-                <option value="">—</option>
+                <option value=""><?php echo esc_html__('—', 'clarityphase'); ?></option>
                 <option value="analyse_briefing">Analyse &amp; Briefing</option>
                 <option value="struktur_konzept">Struktur &amp; Konzept</option>
                 <option value="umsetzung">Umsetzung</option>
@@ -454,7 +454,7 @@ add_action('current_screen', function($screen) {
             </label>
 
             <label class="alignleft" style="margin-left:12px;">
-              <span class="title">Fortschritt (%)</span>
+              <span class="title"><?php echo esc_html__('Fortschritt (%)', 'clarityphase'); ?></span>
               <input type="number" name="cp_progress" min="0" max="100" step="1" style="width:90px;">
             </label>
           </div>
@@ -569,7 +569,7 @@ add_shortcode('clarityphase_dashboard', function () {
         : 0;
 
     if (!$project_id) {
-        return '<div class="cp-empty">Kein Projekt gefunden. Bitte Admin kontaktieren.</div>';
+        return '<div class="cp-empty">' . esc_html__('Kein Projekt gefunden. Bitte Admin kontaktieren.', 'clarityphase') . '</div>';
     }
 
     $user = wp_get_current_user();
@@ -594,12 +594,12 @@ add_shortcode('clarityphase_dashboard', function () {
                 <div class="cp-dashboard__brand"><?php echo esc_html($brand_name); ?></div>
             <?php endif; ?>
 
-            <div class="cp-dashboard__title">Willkommen, <?php echo esc_html($name); ?></div>
+            <div class="cp-dashboard__title"><?php echo esc_html(sprintf(__('Willkommen, %s', 'clarityphase'), $name)); ?></div>
         </div>
 
         <div class="cp-dashboard__actions">
-            <a class="cp-btn" href="<?php echo esc_url($url); ?>">Zum Projekt</a>
-            <?php echo do_shortcode('[clarityphase_logout_button label="Abmelden" redirect="/kundenbereich/"]'); ?>
+            <a class="cp-btn" href="<?php echo esc_url($url); ?>"><?php echo esc_html__('Zum Projekt', 'clarityphase'); ?></a>
+            <?php echo do_shortcode('[clarityphase_logout_button label="' . esc_attr__('Abmelden', 'clarityphase') . '" redirect="/kundenbereich/"]'); ?>
         </div>
     </div>
     <?php
@@ -615,11 +615,11 @@ add_shortcode('clarityphase_status', function () {
     if ($status === '') return '';
 
     $labels = [
-        'analyse_briefing' => 'Analyse & Briefing',
-        'struktur_konzept' => 'Struktur & Konzept',
-        'umsetzung'        => 'Umsetzung',
-        'review_feedback'  => 'Review & Feedback',
-        'launch_abschluss' => 'Launch & Abschluss',
+        'analyse_briefing' => __('Analyse & Briefing', 'clarityphase'),
+        'struktur_konzept' => __('Struktur & Konzept', 'clarityphase'),
+        'umsetzung'        => __('Umsetzung', 'clarityphase'),
+        'review_feedback'  => __('Review & Feedback', 'clarityphase'),
+        'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
     $label = $labels[$status] ?? $status;
 
@@ -639,7 +639,7 @@ add_shortcode('clarityphase_next_step', function () {
     <div class="cp-nextstep">
       <div class="cp-nextstep-head">
         <span class="cp-nextstep-dot" aria-hidden="true"></span>
-        <span class="cp-nextstep-title">Nächster Schritt</span>
+        <span class="cp-nextstep-title"><?php echo esc_html__('Nächster Schritt', 'clarityphase'); ?></span>
       </div>
 
       <div class="cp-nextstep-body">
@@ -663,11 +663,11 @@ add_shortcode('clarityphase_workflow', function () {
     if ($current === '') return '';
 
     $steps = [
-        'analyse_briefing' => 'Analyse & Briefing',
-        'struktur_konzept' => 'Struktur & Konzept',
-        'umsetzung'        => 'Umsetzung',
-        'review_feedback'  => 'Review & Feedback',
-        'launch_abschluss' => 'Launch & Abschluss',
+        'analyse_briefing' => __('Analyse & Briefing', 'clarityphase'),
+        'struktur_konzept' => __('Struktur & Konzept', 'clarityphase'),
+        'umsetzung'        => __('Umsetzung', 'clarityphase'),
+        'review_feedback'  => __('Review & Feedback', 'clarityphase'),
+        'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
 
     $keys = array_keys($steps);
@@ -676,7 +676,7 @@ add_shortcode('clarityphase_workflow', function () {
     ob_start();
     ?>
     <div class="cp-card">
-      <strong>Workflow</strong>
+      <strong><?php echo esc_html__('Workflow', 'clarityphase'); ?></strong>
       <div class="cp-flow" style="margin-top:12px;display:grid;gap:10px;">
         <?php
         $i = 0;
@@ -720,7 +720,7 @@ add_shortcode('clarityphase_progress', function () {
     ?>
     <div class="cp-progress-card">
       <div class="cp-progress-head">
-        <span class="cp-progress-label">Fortschritt</span>
+        <span class="cp-progress-label"><?php echo esc_html__('Fortschritt', 'clarityphase'); ?></span>
         <span class="cp-progress-value"><?php echo esc_html($p); ?>%</span>
       </div>
 
@@ -765,7 +765,7 @@ add_shortcode('clarityphase_phase_pills', function () {
     $steps = [
         'analyse_briefing' => 'Analyse',
         'struktur_konzept' => 'Konzept',
-        'umsetzung'        => 'Umsetzung',
+        'umsetzung'        => __('Umsetzung', 'clarityphase'),
         'review_feedback'  => 'Review',
         'launch_abschluss' => 'Launch',
     ];
@@ -775,7 +775,7 @@ add_shortcode('clarityphase_phase_pills', function () {
 
     ob_start();
     ?>
-    <div class="cp-phase-pills" aria-label="Projektphasen">
+    <div class="cp-phase-pills" aria-label="<?php echo esc_attr__('Projektphasen', 'clarityphase'); ?>">
       <?php
       $i = 0;
       foreach ($steps as $key => $label):
@@ -808,7 +808,7 @@ add_shortcode('clarityphase_logout_button', function ($atts) {
     if (!is_user_logged_in()) return '';
 
     $atts = shortcode_atts([
-        'label' => 'Abmelden',
+        'label' => __('Abmelden', 'clarityphase'),
         'redirect' => '/kundenbereich/'
     ], $atts);
 
@@ -883,11 +883,11 @@ add_action('updated_post_meta', function($meta_id, $object_id, $meta_key, $meta_
     if (!$user || empty($user->user_email)) return;
 
     $labels = [
-        'analyse_briefing' => 'Analyse & Briefing',
-        'struktur_konzept' => 'Struktur & Konzept',
-        'umsetzung'        => 'Umsetzung',
-        'review_feedback'  => 'Review & Feedback',
-        'launch_abschluss' => 'Launch & Abschluss',
+        'analyse_briefing' => __('Analyse & Briefing', 'clarityphase'),
+        'struktur_konzept' => __('Struktur & Konzept', 'clarityphase'),
+        'umsetzung'        => __('Umsetzung', 'clarityphase'),
+        'review_feedback'  => __('Review & Feedback', 'clarityphase'),
+        'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
 
     $new_label = $labels[$new_status] ?? $new_status;
@@ -975,11 +975,11 @@ add_shortcode('clarityphase_workflow', function () {
 
     // Reihenfolge der 5 Phasen
     $steps = [
-        'analyse_briefing' => 'Analyse & Briefing',
-        'struktur_konzept' => 'Struktur & Konzept',
-        'umsetzung'        => 'Umsetzung',
-        'review_feedback'  => 'Review & Feedback',
-        'launch_abschluss' => 'Launch & Abschluss',
+        'analyse_briefing' => __('Analyse & Briefing', 'clarityphase'),
+        'struktur_konzept' => __('Struktur & Konzept', 'clarityphase'),
+        'umsetzung'        => __('Umsetzung', 'clarityphase'),
+        'review_feedback'  => __('Review & Feedback', 'clarityphase'),
+        'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
 
     // Aktuellen Index finden
@@ -989,7 +989,7 @@ add_shortcode('clarityphase_workflow', function () {
     ob_start();
     ?>
     <div class="cp-card">
-      <strong>Workflow</strong>
+      <strong><?php echo esc_html__('Workflow', 'clarityphase'); ?></strong>
       <div class="cp-flow" style="margin-top:12px;display:grid;gap:10px;">
         <?php
         $i = 0;
@@ -1147,7 +1147,7 @@ add_shortcode('clarityphase_upload', function () {
         : 0;
 
     if (!$project_id) {
-        return '<div class="cp-upload-msg">Kein Projekt gefunden.</div>';
+        return '<div class="cp-upload-msg">' . esc_html__('Kein Projekt gefunden.', 'clarityphase') . '</div>';
     }
 
     $out = '';
@@ -1167,7 +1167,7 @@ add_shortcode('clarityphase_upload', function () {
             $attachment_id = media_handle_upload('cp_file', 0);
 
             if (is_wp_error($attachment_id)) {
-                $out .= '<div class="cp-upload-error">Upload fehlgeschlagen: ' . esc_html($attachment_id->get_error_message()) . '</div>';
+                $out .= '<div class="cp-upload-error">' . esc_html__('Upload fehlgeschlagen:', 'clarityphase') . ' ' . esc_html($attachment_id->get_error_message()) . '</div>';
             } else {
 
                 // Meta speichern (Zuweisung)
@@ -1195,7 +1195,7 @@ add_shortcode('clarityphase_upload', function () {
 
                 wp_mail($to, $subject, $message);
 
-                $out .= '<div class="cp-upload-success">✅ Danke! Datei & Feedback wurden gesendet.</div>';
+                $out .= '<div class="cp-upload-success">✅ ' . esc_html__('Danke! Datei & Feedback wurden gesendet.', 'clarityphase') . '</div>';
             }
 
         } else {
@@ -1212,9 +1212,9 @@ add_shortcode('clarityphase_upload', function () {
 
                 wp_mail($to, $subject, $message);
 
-                $out .= '<div class="cp-upload-success">✅ Danke! Feedback wurde gesendet.</div>';
+                $out .= '<div class="cp-upload-success">✅ ' . esc_html__('Danke! Feedback wurde gesendet.', 'clarityphase') . '</div>';
             } else {
-                $out .= '<div class="cp-upload-error">Bitte wähle eine Datei aus oder schreibe ein Feedback.</div>';
+                $out .= '<div class="cp-upload-error">' . esc_html__('Bitte wähle eine Datei aus oder schreibe ein Feedback.', 'clarityphase') . '</div>';
             }
         }
     }
@@ -1227,13 +1227,13 @@ add_shortcode('clarityphase_upload', function () {
       <form method="post" enctype="multipart/form-data" class="cp-upload-form">
         <?php wp_nonce_field('cp_upload', 'cp_upload_nonce'); ?>
 
-        <label class="cp-label">Datei hochladen (PDF/JPG/PNG)</label>
+        <label class="cp-label"><?php echo esc_html__('Datei hochladen (PDF/JPG/PNG)', 'clarityphase'); ?></label>
         <input type="file" name="cp_file" class="cp-input" />
 
-        <label class="cp-label">Feedback / Hinweis</label>
-        <textarea name="cp_feedback" class="cp-textarea" placeholder="Schreib hier dein Feedback oder Hinweise…"></textarea>
+        <label class="cp-label"><?php echo esc_html__('Feedback / Hinweis', 'clarityphase'); ?></label>
+        <textarea name="cp_feedback" class="cp-textarea" placeholder="<?php echo esc_attr__('Schreib hier dein Feedback oder Hinweise…', 'clarityphase'); ?>"></textarea>
 
-        <button type="submit" class="cp-submit">Senden</button>
+        <button type="submit" class="cp-submit"><?php echo esc_html__('Senden', 'clarityphase'); ?></button>
       </form>
     </div>
     <?php
@@ -1248,7 +1248,7 @@ add_shortcode('clarityphase_upload', function () {
     if (!is_user_logged_in()) return '';
 
     if (!function_exists('cp_has_plan') || !cp_has_plan('pro')) {
-        return '<div class="cp-upload-error">Diese Funktion ist nur in der Pro-Version verfügbar.</div>';
+        return '<div class="cp-upload-error">' . esc_html__('Diese Funktion ist nur in der Pro-Version verfügbar.', 'clarityphase') . '</div>';
     }
 
     // Projektseite des eingeloggten Users ermitteln
@@ -1257,7 +1257,7 @@ add_shortcode('clarityphase_upload', function () {
         : 0;
 
     if (!$project_id) {
-        return '<div class="cp-upload-error">Kein Projekt gefunden. Bitte Admin kontaktieren.</div>';
+        return '<div class="cp-upload-error">' . esc_html__('Kein Projekt gefunden. Bitte Admin kontaktieren.', 'clarityphase') . '</div>';
     }
 
     $notice = '';
@@ -1274,7 +1274,7 @@ add_shortcode('clarityphase_upload', function () {
         $has_file = !empty($_FILES['cp_file']['name']);
 
         if (!$has_file && $feedback_clean === '') {
-            $notice = '<div class="cp-upload-error">Bitte Datei auswählen oder Feedback eingeben.</div>';
+            $notice = '<div class="cp-upload-error">' . esc_html__('Bitte Datei auswählen oder Feedback eingeben.', 'clarityphase') . '</div>';
         } else {
 
             $attachment_id = 0;
@@ -1287,7 +1287,7 @@ add_shortcode('clarityphase_upload', function () {
                 $allowed = ['pdf','png','jpg','jpeg','webp'];
                 $ext = strtolower(pathinfo($_FILES['cp_file']['name'], PATHINFO_EXTENSION));
                 if (!in_array($ext, $allowed, true)) {
-                    $notice = '<div class="cp-upload-error">Dateityp nicht erlaubt (nur PDF/JPG/PNG/WebP).</div>';
+                    $notice = '<div class="cp-upload-error">' . esc_html__('Dateityp nicht erlaubt (nur PDF/JPG/PNG/WebP).', 'clarityphase') . '</div>';
                 } else {
 
                     require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -1297,7 +1297,7 @@ add_shortcode('clarityphase_upload', function () {
                     $attachment_id = media_handle_upload('cp_file', 0);
 
                     if (is_wp_error($attachment_id)) {
-                        $notice = '<div class="cp-upload-error">Upload fehlgeschlagen: ' . esc_html($attachment_id->get_error_message()) . '</div>';
+                        $notice = '<div class="cp-upload-error">' . esc_html__('Upload fehlgeschlagen:', 'clarityphase') . ' ' . esc_html($attachment_id->get_error_message()) . '</div>';
                         $attachment_id = 0;
                     } else {
                         // Zuordnung speichern
@@ -1343,7 +1343,7 @@ add_shortcode('clarityphase_upload', function () {
         }
     }
 
-    $notice = '<div class="cp-upload-success">✅ Danke! Datei/Feedback wurde gesendet.</div>';
+    $notice = '<div class="cp-upload-success">✅ ' . esc_html__('Danke! Datei/Feedback wurde gesendet.', 'clarityphase') . '</div>';
 }
         }
     }
@@ -1356,13 +1356,13 @@ add_shortcode('clarityphase_upload', function () {
       <form method="post" enctype="multipart/form-data" class="cp-upload-form">
         <?php wp_nonce_field('cp_upload_submit', 'cp_upload_nonce'); ?>
 
-        <label class="cp-label">Datei hochladen (PDF/JPG/PNG/WebP)</label>
+        <label class="cp-label"><?php echo esc_html__('Datei hochladen (PDF/JPG/PNG/WebP)', 'clarityphase'); ?></label>
         <input class="cp-input" type="file" name="cp_file" />
 
-        <label class="cp-label">Feedback / Hinweis</label>
-        <textarea class="cp-textarea" name="cp_feedback" placeholder="Schreib hier dein Feedback oder Hinweise…"></textarea>
+        <label class="cp-label"><?php echo esc_html__('Feedback / Hinweis', 'clarityphase'); ?></label>
+        <textarea class="cp-textarea" name="cp_feedback" placeholder="<?php echo esc_attr__('Schreib hier dein Feedback oder Hinweise…', 'clarityphase'); ?>"></textarea>
 
-        <button class="cp-submit" type="submit">Senden</button>
+        <button class="cp-submit" type="submit"><?php echo esc_html__('Senden', 'clarityphase'); ?></button>
       </form>
       <?php
 // ---------------------------
@@ -1590,11 +1590,11 @@ add_action('admin_footer', function () {
 
 // Dropdown-Einträge hinzufügen
 add_filter('bulk_actions-edit-cp_project', function($actions) {
-    $actions['cp_set_status_analyse_briefing'] = 'Status → Analyse & Briefing';
-    $actions['cp_set_status_struktur_konzept'] = 'Status → Struktur & Konzept';
-    $actions['cp_set_status_umsetzung']        = 'Status → Umsetzung';
-    $actions['cp_set_status_review_feedback']  = 'Status → Review & Feedback';
-    $actions['cp_set_status_launch_abschluss'] = 'Status → Launch & Abschluss';
+    $actions['cp_set_status_analyse_briefing'] = __('Status → Analyse & Briefing', 'clarityphase');
+    $actions['cp_set_status_struktur_konzept'] = __('Status → Struktur & Konzept', 'clarityphase');
+    $actions['cp_set_status_umsetzung']        = __('Status → Umsetzung', 'clarityphase');
+    $actions['cp_set_status_review_feedback']  = __('Status → Review & Feedback', 'clarityphase');
+    $actions['cp_set_status_launch_abschluss'] = __('Status → Launch & Abschluss', 'clarityphase');
     return $actions;
 });
 
@@ -1976,8 +1976,8 @@ add_action('admin_enqueue_scripts', function($hook) {
             e.preventDefault();
             if(frame){ frame.open(); return; }
             frame = wp.media({
-                title: 'Logo auswählen',
-                button: { text: 'Übernehmen' },
+                title: '' . esc_js(__('Logo auswählen', 'clarityphase')) . '
+                button: { text: '' . esc_js(__('Übernehmen', 'clarityphase')) . ' },
                 multiple: false
             });
             frame.on('select', function(){
