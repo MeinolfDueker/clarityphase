@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 0.9.9
+Version: 1.0.0
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '0.9.9');
+    define('CLARITYPHASE_VERSION', '1.0.0');
 }
 
 add_action('plugins_loaded', function () {
@@ -157,7 +157,7 @@ function cp_render_project_details_metabox($post) {
       <div class="cp-field">
         <label for="cp_progress"><?php echo esc_html__('Fortschritt (%)', 'clarityphase'); ?></label>
         <input type="number" name="cp_progress" id="cp_progress" min="0" max="100" value="<?php echo esc_attr($progress); ?>">
-        <div class="cp-help">0–100</div>
+        <div class="cp-help"><?php echo esc_html__('0–100', 'clarityphase'); ?></div>
       </div>
 
       <div class="cp-field">
@@ -288,7 +288,7 @@ add_action('manage_cp_project_posts_custom_column', function ($column, $post_id)
         $label = ($days === 1) ? __('Tag', 'clarityphase') : __('Tagen', 'clarityphase');
 
         echo '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#fff8e1;color:#8d6e00;font-weight:700;font-size:12px;">'
-            . esc_html($display) . ' · in ' . esc_html($days) . ' ' . $label . '</span>';
+            . esc_html(sprintf(__('in %1$d %2$s', 'clarityphase'), $days, $label)) . '</span>';
         return;
 }
 
@@ -304,9 +304,9 @@ add_action('manage_cp_project_posts_custom_column', function ($column, $post_id)
             $title = get_the_title($page_id);
             $link  = get_edit_post_link($page_id);
             if ($link) {
-                echo '<a href="' . esc_url($link) . '">' . esc_html($title ?: 'Seite bearbeiten') . '</a>';
+                echo '<a href="' . esc_url($link) . '">' . esc_html($title ?: __('Seite bearbeiten', 'clarityphase')) . '</a>';
             } else {
-                echo esc_html($title ?: '—');
+                echo esc_html($title ?: __('—', 'clarityphase'));
             }
             return;
         }
@@ -445,11 +445,11 @@ add_action('current_screen', function($screen) {
               <span class="title"><?php echo esc_html__('Status', 'clarityphase'); ?></span>
               <select name="cp_status">
                 <option value=""><?php echo esc_html__('—', 'clarityphase'); ?></option>
-                <option value="analyse_briefing">Analyse &amp; Briefing</option>
-                <option value="struktur_konzept">Struktur &amp; Konzept</option>
-                <option value="umsetzung">Umsetzung</option>
-                <option value="review_feedback">Review &amp; Feedback</option>
-                <option value="launch_abschluss">Launch &amp; Abschluss</option>
+                <option value="analyse_briefing"><?php echo esc_html__('Analyse & Briefing', 'clarityphase'); ?></option>
+                <option value="struktur_konzept"><?php echo esc_html__('Struktur & Konzept', 'clarityphase'); ?></option>
+                <option value="umsetzung"><?php echo esc_html__('Umsetzung', 'clarityphase'); ?></option>
+                <option value="review_feedback"><?php echo esc_html__('Review & Feedback', 'clarityphase'); ?></option>
+                <option value="launch_abschluss"><?php echo esc_html__('Launch & Abschluss', 'clarityphase'); ?></option>
               </select>
             </label>
 
@@ -646,7 +646,7 @@ add_shortcode('clarityphase_next_step', function () {
         <?php if ($next !== ''): ?>
           <?php echo wp_kses_post(wpautop($next)); ?>
         <?php else: ?>
-          <div class="cp-nextstep-empty">Aktuell ist kein nächster Schritt hinterlegt.</div>
+          <div class="cp-nextstep-empty"><?php echo esc_html__('Aktuell ist kein nächster Schritt hinterlegt.', 'clarityphase'); ?></div>
         <?php endif; ?>
       </div>
     </div>
@@ -751,7 +751,7 @@ add_shortcode('clarityphase_deadline', function () {
         if ($ts) $display = date('d.m.Y', $ts);
     }
 
-    return '<div class="cp-deadline"><strong>Deadline:</strong> ' . esc_html($display) . '</div>';
+    return '<div class="cp-deadline"><strong>' . esc_html__('Deadline:', 'clarityphase') . '</strong> ' . esc_html($display) . '</div>';
 });
 
 add_shortcode('clarityphase_phase_pills', function () {
@@ -763,11 +763,11 @@ add_shortcode('clarityphase_phase_pills', function () {
     if ($current === '') return '';
 
     $steps = [
-        'analyse_briefing' => 'Analyse',
-        'struktur_konzept' => 'Konzept',
+        'analyse_briefing' => __('Analyse', 'clarityphase'),
+        'struktur_konzept' => __('Konzept', 'clarityphase'),
         'umsetzung'        => __('Umsetzung', 'clarityphase'),
-        'review_feedback'  => 'Review',
-        'launch_abschluss' => 'Launch',
+        'review_feedback'  => __('Review', 'clarityphase'),
+        'launch_abschluss' => __('Launch', 'clarityphase'),
     ];
 
     $keys = array_keys($steps);
@@ -897,7 +897,7 @@ add_action('updated_post_meta', function($meta_id, $object_id, $meta_key, $meta_
     if (function_exists('cp_add_timeline_entry')) {
         $page_id = (int) get_post_meta($object_id, 'cp_project_page_id', true);
     if ($page_id) {
-        $msg = 'Status geändert: ' . $old_label . ' → ' . $new_label;
+        $msg = sprintf(__('Status geändert: %1$s → %2$s', 'clarityphase'), $old_label, $new_label);
         cp_add_timeline_entry($page_id, 'Status', $msg, 0);
     }
 }
@@ -907,14 +907,14 @@ add_action('updated_post_meta', function($meta_id, $object_id, $meta_key, $meta_
     $project_link = $page_id ? get_permalink($page_id) : get_permalink($object_id);
 
     $to      = $user->user_email;
-    $subject = 'Update zu deinem Projekt: ' . $new_label;
+    $subject = sprintf(__('Update zu deinem Projekt: %s', 'clarityphase'), $new_label);
 
-    $message  = "Hallo " . ($user->first_name ?: $user->display_name) . ",\n\n";
-    $message .= "Der Status deines Projekts wurde aktualisiert.\n\n";
-    $message .= "Vorher: " . $old_label . "\n";
-    $message .= "Jetzt:  " . $new_label . "\n\n";
-    $message .= "Zum Projekt:\n" . $project_link . "\n\n";
-    $message .= "Viele Grüße\nClarityPhase";
+    $message  = sprintf(__('Hallo %s,', 'clarityphase'), ($user->first_name ?: $user->display_name)) . "\n\n";
+    $message .= __('Der Status deines Projekts wurde aktualisiert.', 'clarityphase') . "\n\n";
+    $message .= sprintf(__('Vorher: %s', 'clarityphase'), $old_label) . "\n";
+    $message .= sprintf(__('Jetzt: %s', 'clarityphase'), $new_label) . "\n\n";
+    $message .= __('Zum Projekt:', 'clarityphase') . "\n" . $project_link . "\n\n";
+    $message .= __('Viele Grüße', 'clarityphase') . "\n" . 'ClarityPhase';
 
     $headers = [
         'From: ClarityPhase <info@clarity-phase.com>',
@@ -1182,15 +1182,15 @@ add_shortcode('clarityphase_upload', function () {
                 // Mail an Admin/Agentur
                 $to = get_option('admin_email');
                 $user = wp_get_current_user();
-                $subject = 'ClarityPhase Upload: ' . ($user->display_name ?: $user->user_login);
+                $subject = sprintf(__('ClarityPhase Upload: %s', 'clarityphase'), ($user->display_name ?: $user->user_login));
                 $file_url = wp_get_attachment_url($attachment_id);
 
-                $message  = "Neuer Upload im Kundenportal\n\n";
-                $message .= "User: " . ($user->display_name ?: $user->user_login) . "\n";
-                $message .= "Projekt-ID: " . $project_id . "\n";
-                $message .= "Datei: " . $file_url . "\n\n";
+                $message  = __('Neuer Upload im Kundenportal', 'clarityphase') . "\n\n";
+                $message .= sprintf(__('User: %s', 'clarityphase'), ($user->display_name ?: $user->user_login)) . "\n";
+                $message .= sprintf(__('Projekt-ID: %s', 'clarityphase'), $project_id) . "\n";
+                $message .= sprintf(__('Datei: %s', 'clarityphase'), $file_url) . "\n\n";
                 if ($feedback !== '') {
-                    $message .= "Feedback:\n" . wp_strip_all_tags($feedback) . "\n";
+                    $message .= __('Feedback:', 'clarityphase') . "\n" . wp_strip_all_tags($feedback) . "\n";
                 }
 
                 wp_mail($to, $subject, $message);
@@ -1203,12 +1203,12 @@ add_shortcode('clarityphase_upload', function () {
             if ($feedback !== '') {
                 $to = get_option('admin_email');
                 $user = wp_get_current_user();
-                $subject = 'ClarityPhase Feedback: ' . ($user->display_name ?: $user->user_login);
+                $subject = sprintf(__('ClarityPhase Feedback: %s', 'clarityphase'), ($user->display_name ?: $user->user_login));
 
-                $message  = "Neues Feedback im Kundenportal\n\n";
-                $message .= "User: " . ($user->display_name ?: $user->user_login) . "\n";
-                $message .= "Projekt-ID: " . $project_id . "\n\n";
-                $message .= "Feedback:\n" . wp_strip_all_tags($feedback) . "\n";
+                $message  = __('Neues Feedback im Kundenportal', 'clarityphase') . "\n\n";
+                $message .= sprintf(__('User: %s', 'clarityphase'), ($user->display_name ?: $user->user_login)) . "\n";
+                $message .= sprintf(__('Projekt-ID: %s', 'clarityphase'), $project_id) . "\n\n";
+                $message .= __('Feedback:', 'clarityphase') . "\n" . wp_strip_all_tags($feedback) . "\n";
 
                 wp_mail($to, $subject, $message);
 
@@ -1251,9 +1251,9 @@ add_shortcode('clarityphase_upload', function () {
         return '<div class="cp-upload-error">' . esc_html__('Diese Funktion ist nur in der Pro-Version verfügbar.', 'clarityphase') . '</div>';
     }
 
-    // Projektseite des eingeloggten Users ermitteln
-    $project_id = function_exists('cp_get_project_page_id_for_current_user')
-        ? (int) cp_get_project_page_id_for_current_user()
+    // Zugewiesenes cp_project des eingeloggten Users ermitteln
+    $project_id = function_exists('cp_get_project_id_for_current_user')
+        ? (int) cp_get_project_id_for_current_user()
         : 0;
 
     if (!$project_id) {
@@ -1317,19 +1317,19 @@ add_shortcode('clarityphase_upload', function () {
 
     			$user = wp_get_current_user();
     			$to = get_option('admin_email');
-    			$subject = 'ClarityPhase: Upload/Feedback von ' . ($user->display_name ?: $user->user_login);
+    			$subject = sprintf(__('ClarityPhase: Upload/Feedback von %s', 'clarityphase'), ($user->display_name ?: $user->user_login));
 
-    			$message  = "Neuer Upload/Feedback im Kundenportal\n\n";
-    			$message .= "Kunde: " . ($user->display_name ?: $user->user_login) . "\n";
-    			$message .= "Projekt-ID: " . $project_id . "\n";
-    			$message .= "Projekt-Link: " . get_permalink($project_id) . "\n\n";
+    			$message  = __('Neuer Upload/Feedback im Kundenportal', 'clarityphase') . "\n\n";
+    			$message .= sprintf(__('Kunde: %s', 'clarityphase'), ($user->display_name ?: $user->user_login)) . "\n";
+    			$message .= sprintf(__('Projekt-ID: %s', 'clarityphase'), $project_id) . "\n";
+    			$message .= sprintf(__('Projekt-Link: %s', 'clarityphase'), get_permalink($project_id)) . "\n\n";
 
     			if ($file_url !== '') {
-        			$message .= "Datei: " . $file_url . "\n\n";
+        			$message .= sprintf(__('Datei: %s', 'clarityphase'), $file_url) . "\n\n";
     			}
 
     			if ($feedback_clean !== '') {
-        		$message .= "Feedback:\n" . wp_strip_all_tags($feedback_clean) . "\n";
+        		$message .= __('Feedback:', 'clarityphase') . "\n" . wp_strip_all_tags($feedback_clean) . "\n";
     			}
 
     			wp_mail($to, $subject, $message);
@@ -1385,7 +1385,7 @@ $uploads = get_posts([
 
 if ($uploads) : ?>
   <div class="cp-upload-list">
-    <div class="cp-upload-list-title">Letzte Uploads</div>
+    <div class="cp-upload-list-title"><?php echo esc_html__('Letzte Uploads', 'clarityphase'); ?></div>
     <ul>
       <?php foreach ($uploads as $att) :
         $url  = wp_get_attachment_url($att->ID);
@@ -1418,7 +1418,7 @@ function cp_add_timeline_entry($project_id, $type, $message, $attachment_id = 0)
 
     $user = wp_get_current_user();
     $user_id = (int) ($user ? $user->ID : 0);
-    $author  = $user ? ($user->display_name ?: $user->user_login) : 'Unbekannt';
+    $author  = $user ? ($user->display_name ?: $user->user_login) : __('Unbekannt', 'clarityphase');
 
     $file_url = '';
     $file_name = '';
@@ -1430,11 +1430,11 @@ function cp_add_timeline_entry($project_id, $type, $message, $attachment_id = 0)
     // Inhalt für Timeline (HTML ist ok, wird später sicher ausgegeben)
     $content  = '<strong>' . esc_html($type) . '</strong> – ' . esc_html($author) . "<br>";
     if ($file_url) {
-        $content .= 'Datei: <a href="' . esc_url($file_url) . '" target="_blank" rel="noopener">'
+        $content .= esc_html__('Datei:', 'clarityphase') . ' <a href="' . esc_url($file_url) . '" target="_blank" rel="noopener">'
             . esc_html($file_name ?: $file_url) . "</a><br>";
     }
     if ($message !== '') {
-        $content .= 'Feedback: ' . wp_kses_post(wpautop($message));
+        $content .= esc_html__('Feedback:', 'clarityphase') . ' ' . wp_kses_post(wpautop($message));
     }
 
     wp_insert_comment([
@@ -1457,7 +1457,7 @@ add_action('add_meta_boxes', function () {
     // Nur Seiten (Projektseiten sind bei dir Pages)
     add_meta_box(
         'cp_timeline_box',
-        'ClarityPhase Timeline',
+        __('ClarityPhase Timeline', 'clarityphase'),
         'cp_render_timeline_box',
         'page',
         'normal',
@@ -1471,7 +1471,7 @@ function cp_render_timeline_box($post) {
     if (function_exists('get_field')) {
         $owner = (int) get_field('seitenbesitzer', $post->ID);
         if (!$owner) {
-            echo '<p style="opacity:.7;">Keine Timeline (kein Seitenbesitzer gesetzt).</p>';
+            echo '<p style="opacity:.7;">' . esc_html__('Keine Timeline (kein Seitenbesitzer gesetzt).', 'clarityphase') . '</p>';
             return;
         }
     }
@@ -1486,7 +1486,7 @@ function cp_render_timeline_box($post) {
     ]);
 
     if (!$comments) {
-        echo '<p style="opacity:.7;">Noch keine Einträge.</p>';
+        echo '<p style="opacity:.7;">' . esc_html__('Noch keine Einträge.', 'clarityphase') . '</p>';
         return;
     }
 
@@ -1544,11 +1544,11 @@ add_action('admin_footer', function () {
         progressVal = Math.max(0, Math.min(100, progressVal));
 
         const labels = {
-          "analyse_briefing": "Analyse & Briefing",
-          "struktur_konzept": "Struktur & Konzept",
-          "umsetzung": "Umsetzung",
-          "review_feedback": "Review & Feedback",
-          "launch_abschluss": "Launch & Abschluss"
+          "analyse_briefing": "' . esc_js(__('Analyse & Briefing', 'clarityphase')) . '",
+          "struktur_konzept": "' . esc_js(__('Struktur & Konzept', 'clarityphase')) . '",
+          "umsetzung": "' . esc_js(__('Umsetzung', 'clarityphase')) . '",
+          "review_feedback": "' . esc_js(__('Review & Feedback', 'clarityphase')) . '",
+          "launch_abschluss": "' . esc_js(__('Launch & Abschluss', 'clarityphase')) . '"
         };
 
         setTimeout(function(){
@@ -1558,7 +1558,7 @@ add_action('admin_footer', function () {
           $row.find(".cp-qe[data-cp-status]").attr("data-cp-status", statusVal).data("cp-status", statusVal);
           $row.find(".cp-qe[data-cp-progress]").attr("data-cp-progress", progressVal).data("cp-progress", progressVal);
 
-          const label = labels[statusVal] || statusVal || "—";
+          const label = labels[statusVal] || statusVal || "' . esc_js(__('—', 'clarityphase')) . '";
           const statusHtml = (statusVal === "")
             ? '<span style="opacity:.6;">—</span>'
             : '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#0b1630;color:#fff;font-weight:700;font-size:12px;">' + label + '</span>';
@@ -1630,7 +1630,7 @@ add_action('admin_notices', function() {
     if (!isset($_GET['cp_bulk_changed'])) return;
     $n = (int) $_GET['cp_bulk_changed'];
     echo '<div class="notice notice-success is-dismissible"><p>'
-        . esc_html($n) . ' Projekt(e) aktualisiert.'
+        . esc_html(sprintf(_n('%d Projekt aktualisiert.', '%d Projekte aktualisiert.', $n, 'clarityphase'), $n))
         . '</p></div>';
 });
 
@@ -1704,7 +1704,7 @@ function cp_settings_defaults() {
 
         'portal_url'   => home_url('/portal/'),
         'support_email'=> get_option('admin_email'),
-        'footer_text'  => 'Viele Grüße',
+        'footer_text'  => __('Viele Grüße', 'clarityphase'),
 
         'from_name'    => 'ClarityPhase',
         'from_email'   => get_option('admin_email'),
@@ -1791,8 +1791,8 @@ function cp_settings_sanitize($input) {
 add_action('admin_menu', function() {
     add_submenu_page(
         'edit.php?post_type=cp_project',
-        'ClarityPhase Einstellungen',
-        'Einstellungen',
+        __('ClarityPhase Einstellungen', 'clarityphase'),
+        __('Einstellungen', 'clarityphase'),
         'manage_options',
         'clarityphase_settings',
         'cp_render_settings_page'
@@ -1812,7 +1812,7 @@ add_action('admin_init', function() {
     // 2) LITE: Basis-Einstellungen (immer sichtbar)
     // =====================================================
     add_settings_section('cp_sec_core', esc_html__('Basis (Lite)', 'clarityphase'), function() {
-        echo '<p>Technische Grundeinstellungen für Portal & Versand.</p>';
+        echo '<p>' . esc_html__('Technische Grundeinstellungen für Portal & Versand.', 'clarityphase') . '</p>';
     }, 'clarityphase_settings');
 
     add_settings_field('cp_portal_url', esc_html__('Portal URL', 'clarityphase'), 'cp_field_portal_url', 'clarityphase_settings', 'cp_sec_core');
@@ -1976,8 +1976,8 @@ add_action('admin_enqueue_scripts', function($hook) {
             e.preventDefault();
             if(frame){ frame.open(); return; }
             frame = wp.media({
-                title: '' . esc_js(__('Logo auswählen', 'clarityphase')) . '
-                button: { text: '' . esc_js(__('Übernehmen', 'clarityphase')) . ' },
+                title: '" . esc_js(__('Logo auswählen', 'clarityphase')) . "',
+                button: { text: '" . esc_js(__('Übernehmen', 'clarityphase')) . "' },
                 multiple: false
             });
             frame.on('select', function(){
@@ -2312,7 +2312,7 @@ function cp_check_license($force = false) {
             'ok'         => false,
             'status'     => 'error',
             'plan'       => 'lite',
-            'message'    => 'API Fehler: ' . $resp->get_error_message(),
+            'message'    => sprintf(__('API Fehler: %s', 'clarityphase'), $resp->get_error_message()),
             'checked_at' => time(),
         ];
         cp_set_license_status_cached($out);
@@ -2349,7 +2349,7 @@ $plan = in_array($plan, ['lite', 'pro', 'enterprise'], true) ? $plan : 'lite';
 
     // Fallback wenn API nichts liefert:
     if ($msg === '') {
-        $msg = ($code >= 200 && $code < 300) ? 'Antwort empfangen.' : 'Unerwartete API Antwort.';
+        $msg = ($code >= 200 && $code < 300) ? __('Antwort empfangen.', 'clarityphase') : __('Unerwartete API Antwort.', 'clarityphase');
     }
 
    $out = [
@@ -2411,7 +2411,7 @@ function cp_field_license_key() {
 
     echo '<div style="margin-top:10px;padding:10px;border:1px solid #ddd;background:#fff;max-width:720px;">';
     echo '<strong>' . esc_html__('Lizenz Status:', 'clarityphase') . '</strong> ' . esc_html($status) . ' &nbsp; <strong>' . esc_html__('Plan:', 'clarityphase') . '</strong> ' . esc_html($plan);
-    if ($exp) echo ' &nbsp; <strong>' . esc_html__('Expires:', 'clarityphase') . '</strong> ' . esc_html($exp);
+    if ($exp) echo ' &nbsp; <strong>' . esc_html__('Läuft ab:', 'clarityphase') . '</strong> ' . esc_html($exp);
     if ($msg) echo '<div style="margin-top:6px;opacity:.85;">' . esc_html($msg) . '</div>';
 
     $url = wp_nonce_url(admin_url('admin-post.php?action=cp_check_license'), 'cp_check_license');
@@ -2421,7 +2421,7 @@ function cp_field_license_key() {
 
 // Button handler
 add_action('admin_post_cp_check_license', function() {
-    if (!current_user_can('manage_options')) wp_die('Nope.');
+    if (!current_user_can('manage_options')) wp_die(esc_html__('Keine Berechtigung.', 'clarityphase'));
     check_admin_referer('cp_check_license');
 
     cp_check_license(true);
