@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.0.0
+Version: 1.0.1
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,16 +11,17 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.0.0');
+    define('CLARITYPHASE_VERSION', '1.0.1');
 }
 
-add_action('plugins_loaded', function () {
+function clarityphase_load_textdomain() {
     load_plugin_textdomain(
         'clarityphase',
         false,
-        dirname(plugin_basename(__FILE__)) . '/languages'
+        dirname(plugin_basename(__FILE__)) . '/languages/'
     );
-});
+}
+add_action('plugins_loaded', 'clarityphase_load_textdomain');
 
 add_action('init', function () {
 
@@ -898,7 +899,7 @@ add_action('updated_post_meta', function($meta_id, $object_id, $meta_key, $meta_
         $page_id = (int) get_post_meta($object_id, 'cp_project_page_id', true);
     if ($page_id) {
         $msg = sprintf(__('Status geändert: %1$s → %2$s', 'clarityphase'), $old_label, $new_label);
-        cp_add_timeline_entry($page_id, 'Status', $msg, 0);
+        cp_add_timeline_entry($page_id, __('Status', 'clarityphase'), $msg, 0);
     }
 }
 
@@ -1337,9 +1338,9 @@ add_shortcode('clarityphase_upload', function () {
     		// ✅ TIMELINE: genau EIN Eintrag pro Aktion
     		if (function_exists('cp_add_timeline_entry')) {
         		if (!empty($attachment_id)) {
-            		cp_add_timeline_entry($project_id, 'Upload', $feedback_clean, (int)$attachment_id);
+            		cp_add_timeline_entry($project_id, __('Upload', 'clarityphase'), $feedback_clean, (int)$attachment_id);
         		} else {
-            		cp_add_timeline_entry($project_id, 'Feedback', $feedback_clean, 0);
+            		cp_add_timeline_entry($project_id, __('Feedback', 'clarityphase'), $feedback_clean, 0);
         }
     }
 
