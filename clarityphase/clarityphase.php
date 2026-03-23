@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.0.1
+Version: 1.0.2
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.0.1');
+    define('CLARITYPHASE_VERSION', '1.0.2');
 }
 
 function clarityphase_load_textdomain() {
@@ -21,7 +21,103 @@ function clarityphase_load_textdomain() {
         dirname(plugin_basename(__FILE__)) . '/languages/'
     );
 }
-add_action('plugins_loaded', 'clarityphase_load_textdomain');
+add_action('init', 'clarityphase_load_textdomain');
+
+
+function cp_get_portal_url($fallback = '') {
+    $portal = function_exists('cp_setting') ? (string) cp_setting('portal_url', '') : '';
+    $portal = trim($portal);
+
+    if ($portal !== '' && function_exists('pll_current_language') && function_exists('pll_get_post')) {
+        $page_id = function_exists('url_to_postid') ? (int) url_to_postid($portal) : 0;
+        if ($page_id) {
+            $lang = pll_current_language('slug');
+            if ($lang) {
+                $translated_id = (int) pll_get_post($page_id, $lang);
+                if ($translated_id) {
+                    $translated_url = get_permalink($translated_id);
+                    if ($translated_url) {
+                        $portal = $translated_url;
+                    }
+                }
+            }
+        }
+    }
+
+    if ($portal === '') {
+        $portal = $fallback ?: home_url('/');
+    }
+
+    return $portal;
+}
+
+function cp_get_localized_page_permalink($page_id, $fallback = '') {
+    $page_id = (int) $page_id;
+    if (!$page_id) return $fallback;
+
+    if (function_exists('pll_current_language') && function_exists('pll_get_post')) {
+        $lang = pll_current_language('slug');
+        if ($lang) {
+            $translated_id = (int) pll_get_post($page_id, $lang);
+            if ($translated_id) {
+                $page_id = $translated_id;
+            }
+        }
+    }
+
+    $url = get_permalink($page_id);
+    return $url ?: $fallback;
+}
+
+function cp_get_project_id_by_page_id($page_id) {
+    $page_id = (int) $page_id;
+    if (!$page_id) return 0;
+
+    $candidate_ids = [$page_id];
+    if (function_exists('pll_get_post_translations')) {
+        $translations = pll_get_post_translations($page_id);
+        if (is_array($translations) && $translations) {
+            foreach ($translations as $translated_id) {
+                $translated_id = (int) $translated_id;
+                if ($translated_id && !in_array($translated_id, $candidate_ids, true)) {
+                    $candidate_ids[] = $translated_id;
+                }
+            }
+        }
+    }
+
+    $meta_query = [];
+    if (count($candidate_ids) === 1) {
+        $meta_query[] = [
+            'key'     => 'cp_project_page_id',
+            'value'   => $candidate_ids[0],
+            'compare' => '=',
+            'type'    => 'NUMERIC',
+        ];
+    } else {
+        $meta_query[] = [
+            'key'     => 'cp_project_page_id',
+            'value'   => $candidate_ids,
+            'compare' => 'IN',
+            'type'    => 'NUMERIC',
+        ];
+    }
+
+    $q = new WP_Query([
+        'post_type'      => 'cp_project',
+        'post_status'    => 'any',
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+        'meta_query'     => $meta_query,
+    ]);
+
+    if (!empty($q->posts[0])) {
+        return (int) $q->posts[0];
+    }
+
+    return 0;
+}
 
 add_action('init', function () {
 
@@ -531,27 +627,15 @@ add_action('save_post_cp_project', function ($post_id) {
 function cp_get_project_page_id_for_current_user() {
     if (!is_user_logged_in()) return 0;
 
-    $user_id = get_current_user_id();
+    $project_id = function_exists('cp_get_project_id_for_current_user')
+        ? (int) cp_get_project_id_for_current_user()
+        : 0;
 
-    // WICHTIG: Trage hier den SLUG deiner "Kundenbereich"-Parent-Seite ein:
-    $parent_slug = 'kundenbereich';
-
-    $parent = get_page_by_path($parent_slug);
-    if (!$parent) return 0;
-
-    $q = new WP_Query([
-        'post_type'      => 'page',
-        'posts_per_page' => 1,
-        'post_parent'    => $parent->ID,
-        'meta_query'     => [[
-            'key'     => 'seitenbesitzer',
-            'value'   => (int)$user_id,
-            'compare' => '='
-        ]]
-    ]);
-
-    if ($q->have_posts()) {
-        return (int)$q->posts[0]->ID;
+    if ($project_id) {
+        $page_id = (int) get_post_meta($project_id, 'cp_project_page_id', true);
+        if ($page_id) {
+            return $page_id;
+        }
     }
 
     return 0;
@@ -578,7 +662,8 @@ add_shortcode('clarityphase_dashboard', function () {
 
     // Projekt-URL (bevorzugt Projektseite, sonst Portal-URL aus Settings)
     $page_id = (int) get_post_meta($project_id, 'cp_project_page_id', true);
-    $url = $page_id ? get_permalink($page_id) : (function_exists('cp_setting') ? cp_setting('portal_url', home_url('/portal/')) : home_url('/portal/'));
+    $default_portal_url = function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/');
+    $url = $page_id ? cp_get_localized_page_permalink($page_id, $default_portal_url) : $default_portal_url;
 
     // Branding
     $brand_name = function_exists('cp_setting') ? (string) cp_setting('brand_name', 'ClarityPhase') : 'ClarityPhase';
@@ -600,7 +685,7 @@ add_shortcode('clarityphase_dashboard', function () {
 
         <div class="cp-dashboard__actions">
             <a class="cp-btn" href="<?php echo esc_url($url); ?>"><?php echo esc_html__('Zum Projekt', 'clarityphase'); ?></a>
-            <?php echo do_shortcode('[clarityphase_logout_button label="' . esc_attr__('Abmelden', 'clarityphase') . '" redirect="/kundenbereich/"]'); ?>
+            <?php $cp_logout_redirect = function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/'); echo do_shortcode('[clarityphase_logout_button label="' . esc_attr__('Abmelden', 'clarityphase') . '" redirect="' . esc_url($cp_logout_redirect) . '"]'); ?>
         </div>
     </div>
     <?php
@@ -808,12 +893,20 @@ add_shortcode('clarityphase_phase_pills', function () {
 add_shortcode('clarityphase_logout_button', function ($atts) {
     if (!is_user_logged_in()) return '';
 
+    $default_redirect = function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/');
+
     $atts = shortcode_atts([
         'label' => __('Abmelden', 'clarityphase'),
-        'redirect' => '/kundenbereich/'
+        'redirect' => $default_redirect
     ], $atts);
 
-    $redirect_url = home_url($atts['redirect']);
+    $redirect_raw = trim((string) $atts['redirect']);
+    if ($redirect_raw !== '' && preg_match('#^https?://#i', $redirect_raw)) {
+        $redirect_url = $redirect_raw;
+    } else {
+        $redirect_url = home_url($redirect_raw ?: '/');
+    }
+
     $logout_url   = wp_logout_url($redirect_url);
 
     return '<a class="cp-btn" href="' . esc_url($logout_url) . '">' . esc_html($atts['label']) . '</a>';
@@ -1037,7 +1130,7 @@ add_filter('login_redirect', function ($redirect_to, $requested_redirect_to, $us
 
     // Kunden (Subscriber) ins Portal
     if (in_array('subscriber', (array) $user->roles, true)) {
-        return home_url('/portal/');
+        return function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/');
     }
 
     // Alle anderen Rollen ebenfalls ins Backend (optional)
@@ -1061,7 +1154,7 @@ add_action('admin_init', function () {
     $script = isset($_SERVER['PHP_SELF']) ? basename($_SERVER['PHP_SELF']) : '';
     if ($script === 'admin-post.php') return;
 
-    wp_safe_redirect(home_url('/portal/'));
+    wp_safe_redirect(function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/'));
     exit;
 
 }, 1);
@@ -1079,7 +1172,7 @@ add_filter('login_redirect', function ($redirect_to, $requested_redirect_to, $us
     }
 
     // Alle anderen immer ins Portal
-    return home_url('/portal/');
+    return function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/');
 
 }, 9999, 3);
 
@@ -1092,45 +1185,34 @@ add_filter('show_admin_bar', function ($show) {
 });
 
 // -------------------------------------
-// Frontend: Projektseiten nur für Besitzer (inkl. 2 Ebenen)
+// Frontend: Projektseiten nur für Besitzer
 // -------------------------------------
 add_action('template_redirect', function () {
 
     if (is_admin()) return;
     if (!is_user_logged_in()) return;
-
     if (current_user_can('manage_options')) return;
-
     if (!is_page()) return;
 
-    $post_id = get_queried_object_id();
+    $post_id = (int) get_queried_object_id();
     if (!$post_id) return;
 
-    $parent_slug = 'kundenbereich';
-    $parent = get_page_by_path($parent_slug);
-    if (!$parent) return;
+    $project_id = function_exists('cp_get_project_id_by_page_id')
+        ? (int) cp_get_project_id_by_page_id($post_id)
+        : 0;
 
-    // Prüfen ob Seite im Kundenbereich-Baum liegt (max. 2 Ebenen)
-    $current_id = $post_id;
-    $is_in_tree = false;
+    // Nur verknüpfte Projektseiten schützen
+    if (!$project_id) return;
 
-    for ($i = 0; $i < 3; $i++) {
-        if ($current_id == $parent->ID) {
-            $is_in_tree = true;
-            break;
-        }
-        $current_id = wp_get_post_parent_id($current_id);
-        if (!$current_id) break;
+    $owner_id = (int) get_post_meta($project_id, 'cp_owner_id', true);
+
+    // Fallback für ältere Setups mit ACF owner Feld direkt auf der Seite
+    if (!$owner_id && function_exists('get_field')) {
+        $owner_id = (int) get_field('seitenbesitzer', $post_id);
     }
 
-    if (!$is_in_tree) return;
-
-    if (!function_exists('get_field')) return;
-
-    $owner_id = (int) get_field('seitenbesitzer', $post_id);
-
     if (!$owner_id || $owner_id !== get_current_user_id()) {
-        wp_safe_redirect(home_url('/portal/'));
+        wp_safe_redirect(function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/'));
         exit;
     }
 
@@ -1703,7 +1785,7 @@ function cp_settings_defaults() {
         'logo_id'      => 0,
         'accent_color' => '#0b1630',
 
-        'portal_url'   => home_url('/portal/'),
+        'portal_url'   => home_url('/'),
         'support_email'=> get_option('admin_email'),
         'footer_text'  => __('Viele Grüße', 'clarityphase'),
 
