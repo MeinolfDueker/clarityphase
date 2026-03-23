@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.0.4
+Version: 1.1.0
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.0.4');
+    define('CLARITYPHASE_VERSION', '1.1.0');
 }
 
 function clarityphase_load_textdomain() {
@@ -119,6 +119,159 @@ function cp_get_project_id_by_page_id($page_id) {
     return 0;
 }
 
+
+// -------------------------------------
+// Enterprise: Custom Phases Helpers
+// -------------------------------------
+function cp_get_default_phase_definitions() {
+    return [
+        [
+            'key'   => 'analyse_briefing',
+            'label' => __('Analyse & Briefing', 'clarityphase'),
+            'short' => __('Analyse', 'clarityphase'),
+        ],
+        [
+            'key'   => 'struktur_konzept',
+            'label' => __('Struktur & Konzept', 'clarityphase'),
+            'short' => __('Konzept', 'clarityphase'),
+        ],
+        [
+            'key'   => 'umsetzung',
+            'label' => __('Umsetzung', 'clarityphase'),
+            'short' => __('Umsetzung', 'clarityphase'),
+        ],
+        [
+            'key'   => 'review_feedback',
+            'label' => __('Review & Feedback', 'clarityphase'),
+            'short' => __('Review', 'clarityphase'),
+        ],
+        [
+            'key'   => 'launch_abschluss',
+            'label' => __('Launch & Abschluss', 'clarityphase'),
+            'short' => __('Launch', 'clarityphase'),
+        ],
+    ];
+}
+
+function cp_get_custom_phase_definitions() {
+    if (!function_exists('cp_has_plan') || !cp_has_plan('enterprise')) {
+        return [];
+    }
+
+    $raw = (string) cp_setting('custom_phases', '');
+    $raw = trim($raw);
+    if ($raw === '') {
+        return [];
+    }
+
+    $lines = preg_split('/
+|
+|
+/', $raw);
+    if (!is_array($lines) || !$lines) {
+        return [];
+    }
+
+    $out = [];
+    foreach ($lines as $line) {
+        $line = trim((string) $line);
+        if ($line === '' || strpos($line, '#') === 0) {
+            continue;
+        }
+
+        $parts = array_map('trim', explode('|', $line));
+        if (empty($parts[0])) {
+            continue;
+        }
+
+        $key = sanitize_key($parts[0]);
+        if ($key === '') {
+            continue;
+        }
+
+        $label = isset($parts[1]) && $parts[1] !== '' ? sanitize_text_field($parts[1]) : $key;
+        $short = isset($parts[2]) && $parts[2] !== '' ? sanitize_text_field($parts[2]) : $label;
+
+        $out[$key] = [
+            'key'   => $key,
+            'label' => $label,
+            'short' => $short,
+        ];
+    }
+
+    return array_values($out);
+}
+
+function cp_get_phase_definitions() {
+    $custom = cp_get_custom_phase_definitions();
+    if (!empty($custom)) {
+        return $custom;
+    }
+    return cp_get_default_phase_definitions();
+}
+
+function cp_get_phase_options($fallback = []) {
+    $defs = cp_get_phase_definitions();
+    if (empty($defs)) {
+        return is_array($fallback) ? $fallback : [];
+    }
+
+    $out = [];
+    foreach ($defs as $def) {
+        if (empty($def['key'])) continue;
+        $out[$def['key']] = isset($def['label']) ? $def['label'] : $def['key'];
+    }
+    return $out;
+}
+
+function cp_get_phase_short_options($fallback = []) {
+    $defs = cp_get_phase_definitions();
+    if (empty($defs)) {
+        return is_array($fallback) ? $fallback : [];
+    }
+
+    $out = [];
+    foreach ($defs as $def) {
+        if (empty($def['key'])) continue;
+        $out[$def['key']] = isset($def['short']) ? $def['short'] : (isset($def['label']) ? $def['label'] : $def['key']);
+    }
+    return $out;
+}
+
+function cp_get_phase_label($status, $fallback = '') {
+    $status = sanitize_key((string) $status);
+    if ($status === '') {
+        return $fallback;
+    }
+
+    $labels = cp_get_phase_options();
+    return $labels[$status] ?? ($fallback !== '' ? $fallback : $status);
+}
+
+function cp_get_phase_bulk_action_map() {
+    $map = [];
+    foreach (cp_get_phase_definitions() as $def) {
+        if (empty($def['key'])) continue;
+        $map['cp_set_status_' . $def['key']] = $def['key'];
+    }
+    return $map;
+}
+
+function cp_render_phase_select_options($selected = '', $include_empty = false) {
+    $selected = (string) $selected;
+    if ($include_empty) {
+        echo '<option value="">' . esc_html__('—', 'clarityphase') . '</option>';
+    }
+
+    foreach (cp_get_phase_options() as $key => $label) {
+        echo '<option value="' . esc_attr($key) . '" ' . selected($selected, $key, false) . '>' . esc_html($label) . '</option>';
+    }
+}
+
+function cp_get_phase_labels_for_js() {
+    return cp_get_phase_options();
+}
+
 add_action('init', function () {
 
     register_post_type('cp_project', [
@@ -192,6 +345,7 @@ function cp_render_project_details_metabox($post) {
         'review_feedback'  => __('Review & Feedback', 'clarityphase'),
         'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
+    $status_choices = cp_get_phase_options($status_choices);
 
     ?>
     <style>
@@ -324,6 +478,7 @@ add_action('manage_cp_project_posts_custom_column', function ($column, $post_id)
         'review_feedback'  => __('Review & Feedback', 'clarityphase'),
         'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
+    $labels = cp_get_phase_options($labels);
     $label = $labels[$status] ?? $status;
 
         echo '<span class="cp-badge cp-badge--status">' . esc_html($label) . '</span>';
@@ -477,6 +632,7 @@ add_action('current_screen', function($screen) {
             'review_feedback'  => __('Review & Feedback', 'clarityphase'),
             'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
         ];
+        $options = array_merge(['' => __('Alle Status', 'clarityphase')], cp_get_phase_options($options));
 
         echo '<select name="cp_status_filter">';
         foreach ($options as $val => $label) {
@@ -541,12 +697,7 @@ add_action('current_screen', function($screen) {
             <label class="alignleft">
               <span class="title"><?php echo esc_html__('Status', 'clarityphase'); ?></span>
               <select name="cp_status">
-                <option value=""><?php echo esc_html__('—', 'clarityphase'); ?></option>
-                <option value="analyse_briefing"><?php echo esc_html__('Analyse & Briefing', 'clarityphase'); ?></option>
-                <option value="struktur_konzept"><?php echo esc_html__('Struktur & Konzept', 'clarityphase'); ?></option>
-                <option value="umsetzung"><?php echo esc_html__('Umsetzung', 'clarityphase'); ?></option>
-                <option value="review_feedback"><?php echo esc_html__('Review & Feedback', 'clarityphase'); ?></option>
-                <option value="launch_abschluss"><?php echo esc_html__('Launch & Abschluss', 'clarityphase'); ?></option>
+                <?php cp_render_phase_select_options('', true); ?>
               </select>
             </label>
 
@@ -707,6 +858,7 @@ add_shortcode('clarityphase_status', function () {
         'review_feedback'  => __('Review & Feedback', 'clarityphase'),
         'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
+    $labels = cp_get_phase_options($labels);
     $label = $labels[$status] ?? $status;
 
     return '<span class="cp-status-pill cp-status-' . esc_attr($status) . '">' . esc_html($label) . '</span>';
@@ -755,6 +907,7 @@ add_shortcode('clarityphase_workflow', function () {
         'review_feedback'  => __('Review & Feedback', 'clarityphase'),
         'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
+    $steps = cp_get_phase_options($steps);
 
     $keys = array_keys($steps);
     $current_index = array_search($current, $keys, true);
@@ -855,6 +1008,7 @@ add_shortcode('clarityphase_phase_pills', function () {
         'review_feedback'  => __('Review', 'clarityphase'),
         'launch_abschluss' => __('Launch', 'clarityphase'),
     ];
+    $steps = cp_get_phase_short_options($steps);
 
     $keys = array_keys($steps);
     $current_index = array_search($current, $keys, true);
@@ -983,6 +1137,7 @@ add_action('updated_post_meta', function($meta_id, $object_id, $meta_key, $meta_
         'review_feedback'  => __('Review & Feedback', 'clarityphase'),
         'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
+    $labels = cp_get_phase_options($labels);
 
     $new_label = $labels[$new_status] ?? $new_status;
     $old_label = $labels[$old_status] ?? $old_status;
@@ -1075,6 +1230,7 @@ add_shortcode('clarityphase_workflow', function () {
         'review_feedback'  => __('Review & Feedback', 'clarityphase'),
         'launch_abschluss' => __('Launch & Abschluss', 'clarityphase'),
     ];
+    $steps = cp_get_phase_options($steps);
 
     // Aktuellen Index finden
     $keys = array_keys($steps);
@@ -1626,13 +1782,7 @@ add_action('admin_footer', function () {
         if (isNaN(progressVal)) progressVal = 0;
         progressVal = Math.max(0, Math.min(100, progressVal));
 
-        const labels = {
-          "analyse_briefing": "' . esc_js(__('Analyse & Briefing', 'clarityphase')) . '",
-          "struktur_konzept": "' . esc_js(__('Struktur & Konzept', 'clarityphase')) . '",
-          "umsetzung": "' . esc_js(__('Umsetzung', 'clarityphase')) . '",
-          "review_feedback": "' . esc_js(__('Review & Feedback', 'clarityphase')) . '",
-          "launch_abschluss": "' . esc_js(__('Launch & Abschluss', 'clarityphase')) . '"
-        };
+        const labels = <?php echo wp_json_encode(cp_get_phase_labels_for_js()); ?>;
 
         setTimeout(function(){
           const $row = $("#post-" + postId);
@@ -1673,24 +1823,16 @@ add_action('admin_footer', function () {
 
 // Dropdown-Einträge hinzufügen
 add_filter('bulk_actions-edit-cp_project', function($actions) {
-    $actions['cp_set_status_analyse_briefing'] = __('Status → Analyse & Briefing', 'clarityphase');
-    $actions['cp_set_status_struktur_konzept'] = __('Status → Struktur & Konzept', 'clarityphase');
-    $actions['cp_set_status_umsetzung']        = __('Status → Umsetzung', 'clarityphase');
-    $actions['cp_set_status_review_feedback']  = __('Status → Review & Feedback', 'clarityphase');
-    $actions['cp_set_status_launch_abschluss'] = __('Status → Launch & Abschluss', 'clarityphase');
+    foreach (cp_get_phase_options() as $key => $label) {
+        $actions['cp_set_status_' . $key] = sprintf(__('Status → %s', 'clarityphase'), $label);
+    }
     return $actions;
 });
 
 // Aktion ausführen
 add_filter('handle_bulk_actions-edit-cp_project', function($redirect_url, $action, $post_ids) {
 
-    $map = [
-        'cp_set_status_analyse_briefing' => 'analyse_briefing',
-        'cp_set_status_struktur_konzept' => 'struktur_konzept',
-        'cp_set_status_umsetzung'        => 'umsetzung',
-        'cp_set_status_review_feedback'  => 'review_feedback',
-        'cp_set_status_launch_abschluss' => 'launch_abschluss',
-    ];
+    $map = cp_get_phase_bulk_action_map();
 
     if (!isset($map[$action])) {
         return $redirect_url;
@@ -1795,7 +1937,8 @@ function cp_settings_defaults() {
         'bcc'          => '',
         'custom_css'   => '',
 
-        'license_key' => '',
+        'license_key'  => '',
+        'custom_phases'=> '',
     ];
 }
 
@@ -1864,11 +2007,45 @@ function cp_settings_sanitize($input) {
 
     $out['license_key'] = isset($input['license_key']) ? sanitize_text_field($input['license_key']) : '';
 
+    $custom_phases = isset($input['custom_phases']) ? (string) $input['custom_phases'] : '';
+    $custom_phases = wp_kses_no_null($custom_phases);
+    $custom_phases = str_replace(["
+", "
+"], "
+", $custom_phases);
+    $custom_lines = [];
+    foreach (explode("
+", $custom_phases) as $line) {
+        $line = trim((string) $line);
+        if ($line === '') {
+            continue;
+        }
+        $parts = array_map('trim', explode('|', $line));
+        if (empty($parts[0])) {
+            continue;
+        }
+
+        $key = sanitize_key($parts[0]);
+        if ($key === '') {
+            continue;
+        }
+
+        $label = isset($parts[1]) && $parts[1] !== '' ? sanitize_text_field($parts[1]) : $key;
+        $short = isset($parts[2]) && $parts[2] !== '' ? sanitize_text_field($parts[2]) : $label;
+        $custom_lines[] = $key . '|' . $label . '|' . $short;
+    }
+    $out['custom_phases'] = implode("
+", $custom_lines);
+
     $pro_only_keys = ['brand_name', 'logo_id', 'accent_color', 'from_name', 'footer_text', 'bcc', 'custom_css'];
     if (!function_exists('cp_has_plan') || !cp_has_plan('pro')) {
         foreach ($pro_only_keys as $pro_key) {
             $out[$pro_key] = $defaults[$pro_key];
         }
+    }
+
+    if (!function_exists('cp_has_plan') || !cp_has_plan('enterprise')) {
+        $out['custom_phases'] = $defaults['custom_phases'];
     }
 
     return $out;
@@ -1963,6 +2140,14 @@ add_action('admin_init', function() {
     add_settings_field('cp_from_name', esc_html__('From Name', 'clarityphase'), 'cp_field_from_name', 'clarityphase_settings', 'cp_sec_mail_pro');
     add_settings_field('cp_footer_text', esc_html__('E-Mail Footer Text', 'clarityphase'), 'cp_field_footer_text', 'clarityphase_settings', 'cp_sec_mail_pro');
     add_settings_field('cp_bcc', esc_html__('BCC (optional)', 'clarityphase'), 'cp_field_bcc', 'clarityphase_settings', 'cp_sec_mail_pro');
+
+    if (function_exists('cp_has_plan') && cp_has_plan('enterprise')) {
+        add_settings_section('cp_sec_enterprise', esc_html__('Enterprise: Custom Phases', 'clarityphase'), function() {
+            echo '<p>' . esc_html__('Hier kannst du eigene Projektphasen definieren. Wenn das Feld leer ist, bleiben die Standardphasen aktiv.', 'clarityphase') . '</p>';
+        }, 'clarityphase_settings');
+
+        add_settings_field('cp_custom_phases', esc_html__('Custom Phases', 'clarityphase'), 'cp_field_custom_phases', 'clarityphase_settings', 'cp_sec_enterprise');
+    }
 
 });
 
@@ -2543,5 +2728,13 @@ add_action('admin_post_cp_check_license', function() {
     wp_safe_redirect(admin_url('edit.php?post_type=cp_project&page=clarityphase_settings'));
     exit;
 });
+
+
+function cp_field_custom_phases() {
+    $val = (string) cp_setting('custom_phases', '');
+    echo '<textarea name="clarityphase_settings[custom_phases]" rows="10" class="large-text code">' . esc_textarea($val) . '</textarea>';
+    echo '<p class="description">' . esc_html__('Eine Phase pro Zeile im Format: slug|Langer Name|Kurzer Name', 'clarityphase') . '</p>';
+    echo '<p class="description">' . esc_html__('Beispiel: kickoff|Kickoff & Setup|Kickoff', 'clarityphase') . '</p>';
+}
 
 
