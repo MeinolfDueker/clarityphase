@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.1.0
+Version: 1.1.1
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.1.0');
+    define('CLARITYPHASE_VERSION', '1.1.1');
 }
 
 function clarityphase_load_textdomain() {
@@ -2390,7 +2390,8 @@ add_action('wp_head', function() {
 
     /* Badges/Pills, falls deine Shortcodes solche Elemente haben */
     .dk-card .cp-badge,
-    .dk-card .cp-pill{
+    .dk-card .cp-pill,
+    .dk-card .cp-phase-pill{
         background: var(--cp-accent);
         color:#fff;
         border-radius:999px;
@@ -2398,6 +2399,26 @@ add_action('wp_head', function() {
         font-weight:700;
         font-size:12px;
         display:inline-block;
+    }
+
+    .dk-card .cp-phase-pills{
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+    }
+
+    .dk-card .cp-phase-pill.cp-phase-done{
+        opacity:.72;
+    }
+
+    .dk-card .cp-phase-pill.cp-phase-active{
+        opacity:1;
+        box-shadow:0 0 0 2px rgba(255,255,255,.18) inset;
+    }
+
+    .dk-card .cp-phase-pill .cp-phase-check{
+        margin-right:6px;
+        font-weight:800;
     }
 
     /* Progress Bar im Portal, wenn du Klassen nutzt */
