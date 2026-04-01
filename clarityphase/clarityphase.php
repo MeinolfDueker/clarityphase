@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.1.1
+Version: 1.1.2
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.1.1');
+    define('CLARITYPHASE_VERSION', '1.1.2');
 }
 
 function clarityphase_load_textdomain() {
@@ -292,7 +292,7 @@ add_action('init', function () {
 
 // Lizenz API URL
 if (!defined('CP_LICENSE_API_URL')) {
-    define('CP_LICENSE_API_URL', home_url('/wp-json/cp-license/v1/check'));
+    define('CP_LICENSE_API_URL', 'https://clarity-phase.com/wp-json/cp-license/v1/check');
 }
 
 // Shared Secret zwischen Kunden-Plugin & Lizenz-Server
@@ -836,7 +836,14 @@ add_shortcode('clarityphase_dashboard', function () {
 
         <div class="cp-dashboard__actions">
             <a class="cp-btn" href="<?php echo esc_url($url); ?>"><?php echo esc_html__('Zum Projekt', 'clarityphase'); ?></a>
-            <?php $cp_logout_redirect = function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/'); echo do_shortcode('[clarityphase_logout_button label="' . esc_attr__('Abmelden', 'clarityphase') . '" redirect="' . esc_url($cp_logout_redirect) . '"]'); ?>
+            <?php
+            $cp_logout_redirect = function_exists('cp_get_portal_url') ? cp_get_portal_url(home_url('/')) : home_url('/');
+            $cp_locale = function_exists('determine_locale') ? determine_locale() : get_locale();
+            $cp_logout_label = (strpos((string) $cp_locale, 'de') === 0)
+                ? esc_attr__('Abmelden', 'clarityphase')
+                : esc_attr__('Log out', 'clarityphase');
+            echo do_shortcode('[clarityphase_logout_button label="' . $cp_logout_label . '" redirect="' . esc_url($cp_logout_redirect) . '"]');
+            ?>
         </div>
     </div>
     <?php
@@ -2368,6 +2375,57 @@ add_action('wp_head', function() {
         background: var(--cp-accent);
     }
 
+    /* Dashboard / Welcome Card */
+    .dk-card.cp-dashboard{
+        padding: 26px 28px 22px;
+        text-align:center;
+    }
+
+    .dk-card.cp-dashboard::before{
+        margin: -26px -28px 22px;
+    }
+
+    .dk-card.cp-dashboard .cp-dashboard__header{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        text-align:center;
+    }
+
+    .dk-card.cp-dashboard .cp-dashboard__logo{
+        display:block;
+        margin:0 auto;
+        max-width:180px;
+        height:auto;
+    }
+
+    .dk-card.cp-dashboard .cp-dashboard__brand{
+        font-size:14px;
+        font-weight:700;
+        line-height:1.2;
+        text-align:center;
+    }
+
+    .dk-card.cp-dashboard .cp-dashboard__title{
+        font-size:18px;
+        font-weight:800;
+        line-height:1.25;
+        text-align:center;
+        margin:0;
+    }
+
+    .dk-card.cp-dashboard .cp-dashboard__actions{
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        gap:12px;
+        flex-wrap:wrap;
+        margin-top:18px;
+        text-align:center;
+    }
+
     /* Buttons im Portal (falls du Buttons/Links drin hast) */
     .dk-card a.cp-btn,
     .dk-card button.cp-btn,
@@ -2390,8 +2448,7 @@ add_action('wp_head', function() {
 
     /* Badges/Pills, falls deine Shortcodes solche Elemente haben */
     .dk-card .cp-badge,
-    .dk-card .cp-pill,
-    .dk-card .cp-phase-pill{
+    .dk-card .cp-pill{
         background: var(--cp-accent);
         color:#fff;
         border-radius:999px;
@@ -2407,17 +2464,41 @@ add_action('wp_head', function() {
         gap:8px;
     }
 
+    .dk-card .cp-phase-pill{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        border-radius:999px;
+        padding:4px 10px;
+        font-weight:700;
+        font-size:12px;
+        line-height:1;
+        border:1px solid var(--cp-accent);
+        background:#fff;
+        color:var(--cp-accent);
+    }
+
     .dk-card .cp-phase-pill.cp-phase-done{
-        opacity:.72;
+        background:#667085;
+        border-color:#667085;
+        color:#fff;
     }
 
     .dk-card .cp-phase-pill.cp-phase-active{
-        opacity:1;
-        box-shadow:0 0 0 2px rgba(255,255,255,.18) inset;
+        background:var(--cp-accent);
+        border-color:var(--cp-accent);
+        color:#fff;
+        box-shadow:none;
+    }
+
+    .dk-card .cp-phase-pill.cp-phase-upcoming{
+        background:#fff;
+        border-color:var(--cp-accent);
+        color:var(--cp-accent);
     }
 
     .dk-card .cp-phase-pill .cp-phase-check{
-        margin-right:6px;
+        margin-right:2px;
         font-weight:800;
     }
 
