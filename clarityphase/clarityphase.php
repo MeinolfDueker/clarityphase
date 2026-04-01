@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.1.2
+Version: 1.1.3
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.1.2');
+    define('CLARITYPHASE_VERSION', '1.1.3');
 }
 
 function clarityphase_load_textdomain() {
@@ -295,9 +295,10 @@ if (!defined('CP_LICENSE_API_URL')) {
     define('CP_LICENSE_API_URL', 'https://clarity-phase.com/wp-json/cp-license/v1/check');
 }
 
-// Shared Secret zwischen Kunden-Plugin & Lizenz-Server
+// Optionales Secret zwischen Kunden-Plugin & Lizenz-Server
 // Wenn Server + Client auf derselben WP laufen, wird das Secret automatisch aus der Server-Option gelesen.
-// Optional kannst du es in wp-config.php setzen: define('CP_LICENSE_CLIENT_SECRET', '...');
+// Für normale Kunden-Installationen ist kein Eintrag in der wp-config.php mehr nötig.
+// Optional kannst du es weiterhin setzen: define('CP_LICENSE_CLIENT_SECRET', '...');
 if (!defined('CP_LICENSE_CLIENT_SECRET')) {
     define('CP_LICENSE_CLIENT_SECRET', '');
 }
@@ -2589,10 +2590,11 @@ add_action('admin_enqueue_scripts', function($hook) {
 
 
 /**
- * Resolve license API secret.
+ * Resolve optional license API secret.
  * - Preferred: CP License Server option (same WP installation): cp_license_api_secret
  * - Fallback: CP_LICENSE_SERVER_SECRET constant (if you set it in wp-config.php for the server plugin)
  * - Fallback: CP_LICENSE_CLIENT_SECRET constant (if you set it manually)
+ * - Empty string is fine: the public license check works without a shared secret.
  */
 function cp_license_client_secret() {
     // 1) Same WP: read server option

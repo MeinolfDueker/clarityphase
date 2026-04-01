@@ -2,7 +2,7 @@
 /*
 Plugin Name: CP License Server
 Description: License API for ClarityPhase (domain binding, expiry, plans).
-Version: 0.2.5
+Version: 0.2.6
 Author: ClarityPhase
 Text Domain: cp-license-server
 Domain Path: /languages
@@ -209,7 +209,7 @@ function cp_lic_render_secret_page() {
     echo '<div class="wrap"><h1>CP License API Secret</h1>';
     echo '<form method="post">';
     wp_nonce_field('cp_secret_save', 'cp_secret_nonce');
-    echo '<p>Dieses Secret muss das Kunden-Plugin bei jeder Lizenzprüfung mitsenden (Header <code>X-CP-Secret</code>).</p>';
+    echo '<p>Optionales Secret für zusätzliche Absicherung. Normale Lizenzprüfungen dürfen auch ohne <code>X-CP-Secret</code> laufen.</p>';
     echo '<input style="width:520px" type="text" name="cp_api_secret" value="' . esc_attr($secret) . '" placeholder="leer lassen zum Generieren" /> ';
     echo '<button class="button button-primary">Speichern</button>';
     echo '</form>';
@@ -266,25 +266,24 @@ add_action('rest_api_init', function () {
 });
 
 /**
- * Permission: Shared Secret Header + Rate Limit
+ * Permission: public license check + optional shared secret + rate limit
  */
 function cp_lic_rest_permission(WP_REST_Request $req) {
 
-    // Secret: bevorzugt Option, fallback auf konstante (wenn vorhanden)
+    // Secret bleibt optional.
+    // Wenn eines konfiguriert ist UND der Client bewusst einen Header mitsendet,
+    // muss er stimmen. Ohne Header darf der normale Lizenzcheck trotzdem laufen.
     $secret = (string) get_option(CP_LIC_API_SECRET_OPT, '');
     if ($secret === '' && defined('CP_LICENSE_SERVER_SECRET')) {
         $secret = (string) CP_LICENSE_SERVER_SECRET;
     }
 
-    // Header robust lesen
-    // WP macht daraus intern lowercase; get_header ist "eigentlich" case-insensitive,
-    // aber wir probieren beide Varianten.
     $hdr = (string) $req->get_header('X-CP-Secret');
     if ($hdr === '') {
         $hdr = (string) $req->get_header('x-cp-secret');
     }
 
-    if ($secret === '' || $hdr === '' || !hash_equals($secret, $hdr)) {
+    if ($secret !== '' && $hdr !== '' && !hash_equals($secret, $hdr)) {
         return new WP_Error('cp_unauthorized', 'Unauthorized', ['status' => 401]);
     }
 
