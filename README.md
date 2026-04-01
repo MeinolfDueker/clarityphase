@@ -1,34 +1,69 @@
 # ClarityPhase
 
-ClarityPhase is a WordPress plugin for structured client communication, project progress tracking, and feedback collection.
+ClarityPhase is a WordPress plugin that turns messy client communication into a clear, structured project experience.
 
-It helps agencies and service providers give clients a clear project portal with phases, next steps, uploads, and status visibility.
+Give your clients a simple portal with project phases, progress tracking, next steps, and feedback — all in one place.
 
-## Features
+---
 
-- client dashboard with project overview
-- project phases and visual progress
-- next-step communication
-- client file upload and feedback
-- white-label settings
-- Pro and Enterprise licensing
-- Enterprise custom phases
-- domain-bound license activation
+## ✨ Why ClarityPhase?
 
-## Plans
+Client projects often fail because of:
+- unclear communication
+- missing structure
+- endless email threads
+- lost feedback and files
+
+ClarityPhase solves this by giving every project a clear, visual workflow.
+
+---
+
+## 🔧 Features
+
+### Client Dashboard
+- clean project overview
+- simple navigation for clients
+- no training needed
+
+### Project Phases
+- structured workflow (Analysis → Concept → Implementation → Review → Launch)
+- visual progress tracking
+- clear status at any time
+
+### Next Steps
+- define exactly what the client should do next
+- eliminate confusion and delays
+
+### Upload & Feedback
+- clients upload files directly
+- add notes and feedback in one place
+- no more email chaos
+
+### White Label (Pro)
+- custom branding (logo, colors)
+- branded communication
+
+### Enterprise Features
+- fully customizable project phases
+- flexible workflows for advanced client processes
+
+---
+
+## 💼 Plans
 
 ### Pro
 - white-label branding
-- logo and accent color
-- enhanced mail branding
-- upload and feedback features
+- enhanced client experience
+- upload & feedback system
 
 ### Enterprise
 - everything in Pro
 - custom project phases
-- flexible workflow setup for larger client processes
+- scalable workflows for teams and agencies
 
-## Installation
+---
+
+## ⚡ Installation
 
 1. Upload the plugin to your WordPress site
 2. Activate the plugin
@@ -36,24 +71,47 @@ It helps agencies and service providers give clients a clear project portal with
 4. Enter your license key
 5. Click **Check License**
 
-## Requirements
+Done.
 
-- WordPress
-- PHP compatible with your hosting environment
-- valid ClarityPhase license for Pro or Enterprise features
+---
 
-## License Activation
+## 🔑 License System
 
-ClarityPhase connects to the central license server to validate your license and bind it to your domain.
+ClarityPhase uses a secure license system:
+
+- license key activation
+- domain binding
+- automatic validation
+- no manual setup required
 
 Customers only need to enter their license key.
 
-## Support
+---
+
+## 🎯 Who is this for?
+
+- agencies
+- freelancers
+- consultants
+- service providers
+- anyone working with client projects
+
+---
+
+## 📩 Support
 
 For support or licensing questions:
 
 **info@dk-digitalbau.de**
 
-## Changelog
+---
 
-See the GitHub Releases section for version history and release notes.
+## 🚀 Status
+
+ClarityPhase is actively developed and continuously improved.
+
+---
+
+## 📦 Changelog
+
+See the GitHub Releases section for all updates and version history.
