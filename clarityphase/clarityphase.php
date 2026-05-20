@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.1.4
+Version: 1.1.5
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.1.4');
+    define('CLARITYPHASE_VERSION', '1.1.5');
 }
 
 function clarityphase_load_textdomain() {
@@ -1389,111 +1389,6 @@ add_shortcode('clarityphase_upload', function () {
 
     if (!is_user_logged_in()) return '';
 
-    $project_id = function_exists('cp_get_project_page_id_for_current_user')
-        ? cp_get_project_page_id_for_current_user()
-        : 0;
-
-    if (!$project_id) {
-        return '<div class="cp-upload-msg">' . esc_html__('Kein Projekt gefunden.', 'clarityphase') . '</div>';
-    }
-
-    $out = '';
-
-    // Form submitted?
-    if (!empty($_POST['cp_upload_nonce']) && wp_verify_nonce($_POST['cp_upload_nonce'], 'cp_upload')) {
-
-        $feedback = isset($_POST['cp_feedback']) ? wp_kses_post(trim((string)$_POST['cp_feedback'])) : '';
-
-        // Upload file if present
-        if (!empty($_FILES['cp_file']['name'])) {
-
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-            require_once ABSPATH . 'wp-admin/includes/media.php';
-            require_once ABSPATH . 'wp-admin/includes/image.php';
-
-            $attachment_id = media_handle_upload('cp_file', 0);
-
-            if (is_wp_error($attachment_id)) {
-                $out .= '<div class="cp-upload-error">' . esc_html__('Upload fehlgeschlagen:', 'clarityphase') . ' ' . esc_html($attachment_id->get_error_message()) . '</div>';
-            } else {
-
-                // Meta speichern (Zuweisung)
-                update_post_meta($attachment_id, '_cp_project_id', (int)$project_id);
-                update_post_meta($attachment_id, '_cp_user_id', (int)get_current_user_id());
-
-                // Optional: Feedback als Meta am Attachment
-                if ($feedback !== '') {
-                    update_post_meta($attachment_id, '_cp_feedback', wp_strip_all_tags($feedback));
-                }
-
-                // Mail an Admin/Agentur
-                $to = get_option('admin_email');
-                $user = wp_get_current_user();
-                $subject = sprintf(__('ClarityPhase Upload: %s', 'clarityphase'), ($user->display_name ?: $user->user_login));
-                $file_url = wp_get_attachment_url($attachment_id);
-
-                $message  = __('Neuer Upload im Kundenportal', 'clarityphase') . "\n\n";
-                $message .= sprintf(__('User: %s', 'clarityphase'), ($user->display_name ?: $user->user_login)) . "\n";
-                $message .= sprintf(__('Projekt-ID: %s', 'clarityphase'), $project_id) . "\n";
-                $message .= sprintf(__('Datei: %s', 'clarityphase'), $file_url) . "\n\n";
-                if ($feedback !== '') {
-                    $message .= __('Feedback:', 'clarityphase') . "\n" . wp_strip_all_tags($feedback) . "\n";
-                }
-
-                wp_mail($to, $subject, $message);
-
-                $out .= '<div class="cp-upload-success">✅ ' . esc_html__('Danke! Datei & Feedback wurden gesendet.', 'clarityphase') . '</div>';
-            }
-
-        } else {
-            // Kein File, aber evtl. Feedback
-            if ($feedback !== '') {
-                $to = get_option('admin_email');
-                $user = wp_get_current_user();
-                $subject = sprintf(__('ClarityPhase Feedback: %s', 'clarityphase'), ($user->display_name ?: $user->user_login));
-
-                $message  = __('Neues Feedback im Kundenportal', 'clarityphase') . "\n\n";
-                $message .= sprintf(__('User: %s', 'clarityphase'), ($user->display_name ?: $user->user_login)) . "\n";
-                $message .= sprintf(__('Projekt-ID: %s', 'clarityphase'), $project_id) . "\n\n";
-                $message .= __('Feedback:', 'clarityphase') . "\n" . wp_strip_all_tags($feedback) . "\n";
-
-                wp_mail($to, $subject, $message);
-
-                $out .= '<div class="cp-upload-success">✅ ' . esc_html__('Danke! Feedback wurde gesendet.', 'clarityphase') . '</div>';
-            } else {
-                $out .= '<div class="cp-upload-error">' . esc_html__('Bitte wähle eine Datei aus oder schreibe ein Feedback.', 'clarityphase') . '</div>';
-            }
-        }
-    }
-
-    ob_start();
-    ?>
-    <div class="cp-upload-box">
-      <?php echo $out; ?>
-
-      <form method="post" enctype="multipart/form-data" class="cp-upload-form">
-        <?php wp_nonce_field('cp_upload', 'cp_upload_nonce'); ?>
-
-        <label class="cp-label"><?php echo esc_html__('Datei hochladen (PDF/JPG/PNG)', 'clarityphase'); ?></label>
-        <input type="file" name="cp_file" class="cp-input" />
-
-        <label class="cp-label"><?php echo esc_html__('Feedback / Hinweis', 'clarityphase'); ?></label>
-        <textarea name="cp_feedback" class="cp-textarea" placeholder="<?php echo esc_attr__('Schreib hier dein Feedback oder Hinweise…', 'clarityphase'); ?>"></textarea>
-
-        <button type="submit" class="cp-submit"><?php echo esc_html__('Senden', 'clarityphase'); ?></button>
-      </form>
-    </div>
-    <?php
-    return ob_get_clean();
-});
-
-// -------------------------------------
-// Upload + Feedback (Shortcode)
-// -------------------------------------
-add_shortcode('clarityphase_upload', function () {
-
-    if (!is_user_logged_in()) return '';
-
     if (!function_exists('cp_has_plan') || !cp_has_plan('pro')) {
         return '<div class="cp-upload-error">' . esc_html__('Diese Funktion ist nur in der Pro-Version verfügbar.', 'clarityphase') . '</div>';
     }
@@ -1506,6 +1401,14 @@ add_shortcode('clarityphase_upload', function () {
     if (!$project_id) {
         return '<div class="cp-upload-error">' . esc_html__('Kein Projekt gefunden. Bitte Admin kontaktieren.', 'clarityphase') . '</div>';
     }
+
+    // Zentrale Historien-ID: bevorzugt die verknüpfte Projektseite, Fallback cp_project.
+    $timeline_post_id = function_exists('cp_get_timeline_post_id')
+        ? (int) cp_get_timeline_post_id($project_id)
+        : (int) $project_id;
+
+    $project_page_id = (int) get_post_meta($project_id, 'cp_project_page_id', true);
+    $project_link = $project_page_id ? get_permalink($project_page_id) : get_permalink($project_id);
 
     $notice = '';
 
@@ -1569,7 +1472,7 @@ add_shortcode('clarityphase_upload', function () {
     			$message  = __('Neuer Upload/Feedback im Kundenportal', 'clarityphase') . "\n\n";
     			$message .= sprintf(__('Kunde: %s', 'clarityphase'), ($user->display_name ?: $user->user_login)) . "\n";
     			$message .= sprintf(__('Projekt-ID: %s', 'clarityphase'), $project_id) . "\n";
-    			$message .= sprintf(__('Projekt-Link: %s', 'clarityphase'), get_permalink($project_id)) . "\n\n";
+    			$message .= sprintf(__('Projekt-Link: %s', 'clarityphase'), $project_link) . "\n\n";
 
     			if ($file_url !== '') {
         			$message .= sprintf(__('Datei: %s', 'clarityphase'), $file_url) . "\n\n";
@@ -1584,9 +1487,9 @@ add_shortcode('clarityphase_upload', function () {
     		// ✅ TIMELINE: genau EIN Eintrag pro Aktion
     		if (function_exists('cp_add_timeline_entry')) {
         		if (!empty($attachment_id)) {
-            		cp_add_timeline_entry($project_id, __('Upload', 'clarityphase'), $feedback_clean, (int)$attachment_id);
+            		cp_add_timeline_entry($timeline_post_id, __('Upload', 'clarityphase'), $feedback_clean, (int)$attachment_id);
         		} else {
-            		cp_add_timeline_entry($project_id, __('Feedback', 'clarityphase'), $feedback_clean, 0);
+            		cp_add_timeline_entry($timeline_post_id, __('Feedback', 'clarityphase'), $feedback_clean, 0);
         }
     }
 
@@ -1653,15 +1556,17 @@ if ($uploads) : ?>
 // ---------------------------
 // Historie anzeigen (Uploads + Feedback)
 // ---------------------------
-$timeline_post_id = function_exists('cp_get_timeline_post_id') ? (int) cp_get_timeline_post_id($project_id) : (int) $project_id;
-$history_entries = $timeline_post_id ? get_comments([
-    'post_id' => $timeline_post_id,
-    'type'    => 'clarityphase',
-    'status'  => 'approve',
-    'number'  => 10,
-    'orderby' => 'comment_date_gmt',
-    'order'   => 'DESC',
-]) : [];
+$fallback_timeline_post_id = function_exists('cp_get_timeline_post_id') ? (int) cp_get_timeline_post_id($project_id) : (int) $project_id;
+$history_entries = function_exists('cp_get_timeline_entries')
+    ? cp_get_timeline_entries($project_id, 10)
+    : get_comments([
+        'post_id' => $fallback_timeline_post_id,
+        'type'    => 'clarityphase',
+        'status'  => 'approve',
+        'number'  => 10,
+        'orderby' => 'comment_date_gmt',
+        'order'   => 'DESC',
+    ]);
 
 if ($history_entries) : ?>
   <div class="cp-upload-list cp-history-list">
@@ -1700,6 +1605,67 @@ function cp_get_timeline_post_id($project_or_page_id) {
 
     // Wenn eine Projektseite übergeben wurde, direkt dort speichern.
     return $project_or_page_id;
+}
+}
+
+
+if (!function_exists('cp_get_related_timeline_post_ids')) {
+function cp_get_related_timeline_post_ids($project_or_page_id) {
+
+    $project_or_page_id = (int) $project_or_page_id;
+    if (!$project_or_page_id) return [];
+
+    $ids = [];
+    $type = get_post_type($project_or_page_id);
+
+    if ($type === 'cp_project') {
+        $page_id = (int) get_post_meta($project_or_page_id, 'cp_project_page_id', true);
+        if ($page_id) $ids[] = $page_id;
+        $ids[] = $project_or_page_id;
+    } else {
+        $ids[] = $project_or_page_id;
+
+        if (function_exists('cp_get_project_id_by_page_id')) {
+            $linked_project_id = (int) cp_get_project_id_by_page_id($project_or_page_id);
+            if ($linked_project_id) $ids[] = $linked_project_id;
+        }
+    }
+
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    return $ids;
+}
+}
+
+if (!function_exists('cp_get_timeline_entries')) {
+function cp_get_timeline_entries($project_or_page_id, $number = 10) {
+
+    $ids = function_exists('cp_get_related_timeline_post_ids')
+        ? cp_get_related_timeline_post_ids($project_or_page_id)
+        : [(int) $project_or_page_id];
+
+    if (!$ids) return [];
+
+    $entries = [];
+    foreach ($ids as $id) {
+        $comments = get_comments([
+            'post_id' => (int) $id,
+            'type'    => 'clarityphase',
+            'status'  => 'approve',
+            'number'  => (int) $number,
+            'orderby' => 'comment_date_gmt',
+            'order'   => 'DESC',
+        ]);
+
+        if ($comments) {
+            $entries = array_merge($entries, $comments);
+        }
+    }
+
+    usort($entries, function($a, $b) {
+        return strcmp((string) $b->comment_date_gmt, (string) $a->comment_date_gmt);
+    });
+
+    return array_slice($entries, 0, max(1, (int) $number));
 }
 }
 
@@ -1762,23 +1728,30 @@ add_action('add_meta_boxes', function () {
 
 function cp_render_timeline_box($post) {
 
-    // Optional: Nur anzeigen, wenn Seite einen Seitenbesitzer hat (ACF)
+    $comments = function_exists('cp_get_timeline_entries')
+        ? cp_get_timeline_entries($post->ID, 50)
+        : get_comments([
+            'post_id' => $post->ID,
+            'type'    => 'clarityphase',
+            'status'  => 'approve',
+            'number'  => 50,
+            'orderby' => 'comment_date_gmt',
+            'order'   => 'DESC',
+        ]);
+
+    $linked_project_id = function_exists('cp_get_project_id_by_page_id')
+        ? (int) cp_get_project_id_by_page_id($post->ID)
+        : 0;
+
+    $acf_owner = 0;
     if (function_exists('get_field')) {
-        $owner = (int) get_field('seitenbesitzer', $post->ID);
-        if (!$owner) {
-            echo '<p style="opacity:.7;">' . esc_html__('Keine Timeline (kein Seitenbesitzer gesetzt).', 'clarityphase') . '</p>';
-            return;
-        }
+        $acf_owner = (int) get_field('seitenbesitzer', $post->ID);
     }
 
-    $comments = get_comments([
-        'post_id' => $post->ID,
-        'type'    => 'clarityphase',
-        'status'  => 'approve',
-        'number'  => 50,
-        'orderby' => 'comment_date_gmt',
-        'order'   => 'DESC',
-    ]);
+    if (!$linked_project_id && !$acf_owner && !$comments) {
+        echo '<p style="opacity:.7;">' . esc_html__('Keine Timeline (diese Seite ist keinem ClarityPhase Projekt zugeordnet).', 'clarityphase') . '</p>';
+        return;
+    }
 
     if (!$comments) {
         echo '<p style="opacity:.7;">' . esc_html__('Noch keine Einträge.', 'clarityphase') . '</p>';
@@ -1798,6 +1771,7 @@ function cp_render_timeline_box($post) {
 
     echo '</div>';
 }
+
 
 add_action('admin_footer', function () {
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
