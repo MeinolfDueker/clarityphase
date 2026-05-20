@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.1.3
+Version: 1.1.4
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.1.3');
+    define('CLARITYPHASE_VERSION', '1.1.4');
 }
 
 function clarityphase_load_textdomain() {
@@ -1649,19 +1649,65 @@ if ($uploads) : ?>
     </ul>
   </div>
 <?php endif; ?>
+      <?php
+// ---------------------------
+// Historie anzeigen (Uploads + Feedback)
+// ---------------------------
+$timeline_post_id = function_exists('cp_get_timeline_post_id') ? (int) cp_get_timeline_post_id($project_id) : (int) $project_id;
+$history_entries = $timeline_post_id ? get_comments([
+    'post_id' => $timeline_post_id,
+    'type'    => 'clarityphase',
+    'status'  => 'approve',
+    'number'  => 10,
+    'orderby' => 'comment_date_gmt',
+    'order'   => 'DESC',
+]) : [];
+
+if ($history_entries) : ?>
+  <div class="cp-upload-list cp-history-list">
+    <div class="cp-upload-list-title"><?php echo esc_html__('Historie', 'clarityphase'); ?></div>
+    <ul>
+      <?php foreach ($history_entries as $entry) :
+        $date = mysql2date('d.m.Y H:i', $entry->comment_date);
+      ?>
+        <li>
+          <div class="cp-history-content"><?php echo wp_kses_post($entry->comment_content); ?></div>
+          <span class="cp-upload-date"><?php echo esc_html($date); ?></span>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  </div>
+<?php endif; ?>
     </div>
     <?php
     return ob_get_clean();
 });
 
 // -------------------------------------
-// Timeline Helper (speichert als Kommentar am Projekt)
+// Timeline Helper (speichert Uploads & Feedback als Historie)
 // -------------------------------------
+if (!function_exists('cp_get_timeline_post_id')) {
+function cp_get_timeline_post_id($project_or_page_id) {
+
+    $project_or_page_id = (int) $project_or_page_id;
+    if (!$project_or_page_id) return 0;
+
+    // Wenn ein cp_project übergeben wurde, bevorzugt auf der verknüpften Projektseite speichern.
+    if (get_post_type($project_or_page_id) === 'cp_project') {
+        $page_id = (int) get_post_meta($project_or_page_id, 'cp_project_page_id', true);
+        return $page_id ?: $project_or_page_id;
+    }
+
+    // Wenn eine Projektseite übergeben wurde, direkt dort speichern.
+    return $project_or_page_id;
+}
+}
+
 if (!function_exists('cp_add_timeline_entry')) {
 function cp_add_timeline_entry($project_id, $type, $message, $attachment_id = 0) {
 
-    $project_id = (int) $project_id;
-    if (!$project_id) return;
+    $timeline_post_id = function_exists('cp_get_timeline_post_id') ? (int) cp_get_timeline_post_id($project_id) : (int) $project_id;
+    if (!$timeline_post_id) return;
 
     $user = wp_get_current_user();
     $user_id = (int) ($user ? $user->ID : 0);
@@ -1674,6 +1720,8 @@ function cp_add_timeline_entry($project_id, $type, $message, $attachment_id = 0)
         $file_name = (string) get_the_title((int)$attachment_id);
     }
 
+    $message = trim((string) $message);
+
     // Inhalt für Timeline (HTML ist ok, wird später sicher ausgegeben)
     $content  = '<strong>' . esc_html($type) . '</strong> – ' . esc_html($author) . "<br>";
     if ($file_url) {
@@ -1685,7 +1733,7 @@ function cp_add_timeline_entry($project_id, $type, $message, $attachment_id = 0)
     }
 
     wp_insert_comment([
-        'comment_post_ID'      => $project_id,
+        'comment_post_ID'      => $timeline_post_id,
         'comment_content'      => $content,
         'user_id'              => $user_id,
         'comment_author'       => $author,
