@@ -2,7 +2,7 @@
 /*
 Plugin Name: ClarityPhase
 Description: Client Portal + Project Workflow (White-Label ready)
-Version: 1.1.6
+Version: 1.1.8
 Author: Meinolf Düker DK-Digitalbau
 Text Domain: clarityphase
 Domain Path: /languages
@@ -11,7 +11,7 @@ Domain Path: /languages
 if (!defined('ABSPATH')) exit;
 
 if (!defined('CLARITYPHASE_VERSION')) {
-    define('CLARITYPHASE_VERSION', '1.1.6');
+    define('CLARITYPHASE_VERSION', '1.1.8');
 }
 
 function clarityphase_load_textdomain() {
@@ -1759,7 +1759,7 @@ if ($history_entries) : ?>
 });
 
 // -------------------------------------
-// Timeline Helper (speichert Uploads & Feedback als Historie)
+// Timeline Helper (speichert Uploads, Feedback & Agentur-Kommentare als Historie)
 // -------------------------------------
 if (!function_exists('cp_get_timeline_post_id')) {
 function cp_get_timeline_post_id($project_or_page_id) {
@@ -1775,6 +1775,47 @@ function cp_get_timeline_post_id($project_or_page_id) {
 
     // Wenn eine Projektseite übergeben wurde, direkt dort speichern.
     return $project_or_page_id;
+}
+}
+
+if (!function_exists('cp_get_project_id_from_context')) {
+function cp_get_project_id_from_context($context_id) {
+
+    $context_id = (int) $context_id;
+    if (!$context_id) return 0;
+
+    if (get_post_type($context_id) === 'cp_project') {
+        return $context_id;
+    }
+
+    if (function_exists('cp_get_project_id_by_page_id')) {
+        return (int) cp_get_project_id_by_page_id($context_id);
+    }
+
+    return 0;
+}
+}
+
+if (!function_exists('cp_get_owner_id_from_context')) {
+function cp_get_owner_id_from_context($context_id) {
+
+    $context_id = (int) $context_id;
+    if (!$context_id) return 0;
+
+    $project_id = function_exists('cp_get_project_id_from_context') ? (int) cp_get_project_id_from_context($context_id) : 0;
+
+    if ($project_id) {
+        $owner_id = (int) get_post_meta($project_id, 'cp_owner_id', true);
+        if ($owner_id) return $owner_id;
+    }
+
+    // Fallback für ältere Setups mit ACF owner Feld direkt auf der Seite
+    if (function_exists('get_field')) {
+        $owner_id = (int) get_field('seitenbesitzer', $context_id);
+        if ($owner_id) return $owner_id;
+    }
+
+    return 0;
 }
 }
 
@@ -1804,7 +1845,8 @@ function cp_add_timeline_entry($project_id, $type, $message, $attachment_id = 0)
             . esc_html($file_name ?: $file_url) . "</a><br>";
     }
     if ($message !== '') {
-        $content .= esc_html__('Feedback:', 'clarityphase') . ' ' . wp_kses_post(wpautop($message));
+        $label = ($type === __('Agentur-Kommentar', 'clarityphase')) ? __('Kommentar:', 'clarityphase') : __('Feedback:', 'clarityphase');
+        $content .= esc_html($label) . ' ' . wp_kses_post(wpautop($message));
     }
 
     wp_insert_comment([
@@ -1819,12 +1861,68 @@ function cp_add_timeline_entry($project_id, $type, $message, $attachment_id = 0)
 }
 }
 
+if (!function_exists('cp_send_customer_comment_notification')) {
+function cp_send_customer_comment_notification($context_id, $comment_text) {
+
+    $context_id = (int) $context_id;
+    $comment_text = trim((string) $comment_text);
+    if (!$context_id || $comment_text === '') return false;
+
+    $owner_id = function_exists('cp_get_owner_id_from_context') ? (int) cp_get_owner_id_from_context($context_id) : 0;
+    if (!$owner_id) return false;
+
+    $user = get_userdata($owner_id);
+    if (!$user || empty($user->user_email)) return false;
+
+    $project_id = function_exists('cp_get_project_id_from_context') ? (int) cp_get_project_id_from_context($context_id) : 0;
+    $timeline_post_id = function_exists('cp_get_timeline_post_id')
+        ? (int) cp_get_timeline_post_id($project_id ?: $context_id)
+        : $context_id;
+
+    $project_link = $timeline_post_id ? get_permalink($timeline_post_id) : '';
+
+    if (function_exists('cp_add_timeline_entry')) {
+        cp_add_timeline_entry($project_id ?: $context_id, __('Agentur-Kommentar', 'clarityphase'), $comment_text, 0);
+    }
+
+    $message  = sprintf(__('Hallo %s,', 'clarityphase'), ($user->first_name ?: $user->display_name)) . "\n\n";
+    $message .= __('es gibt einen neuen Kommentar zu deinem Projekt:', 'clarityphase') . "\n\n";
+    $message .= wp_strip_all_tags($comment_text) . "\n\n";
+
+    if ($project_link) {
+        $message .= __('Zum Projekt:', 'clarityphase') . "\n" . $project_link . "\n\n";
+    }
+
+    $message .= __('Viele Grüße', 'clarityphase') . "\n" . 'ClarityPhase';
+
+    $headers = [
+        'From: ClarityPhase <info@clarity-phase.com>',
+        'Reply-To: info@clarity-phase.com'
+    ];
+
+    return (bool) wp_mail(
+        $user->user_email,
+        __('Neuer Kommentar zu deinem Projekt', 'clarityphase'),
+        $message,
+        $headers
+    );
+}
+}
+
 // -------------------------------------
-// Admin: Timeline Meta Box anzeigen
+// Admin: Timeline Meta Box anzeigen + Kommentar an Kunden senden
 // -------------------------------------
 add_action('add_meta_boxes', function () {
 
-    // Nur Seiten (Projektseiten sind bei dir Pages)
+    add_meta_box(
+        'cp_timeline_box',
+        __('ClarityPhase Timeline', 'clarityphase'),
+        'cp_render_timeline_box',
+        'cp_project',
+        'normal',
+        'default'
+    );
+
     add_meta_box(
         'cp_timeline_box',
         __('ClarityPhase Timeline', 'clarityphase'),
@@ -1835,25 +1933,52 @@ add_action('add_meta_boxes', function () {
     );
 });
 
+add_action('add_meta_boxes_cp_project', function () {
+    remove_meta_box('commentsdiv', 'cp_project', 'normal');
+    remove_meta_box('commentstatusdiv', 'cp_project', 'normal');
+}, 99);
+
+add_action('add_meta_boxes_page', function ($post) {
+    if ($post && function_exists('cp_get_project_id_by_page_id') && cp_get_project_id_by_page_id((int) $post->ID)) {
+        remove_meta_box('commentsdiv', 'page', 'normal');
+        remove_meta_box('commentstatusdiv', 'page', 'normal');
+    }
+}, 99);
+
 function cp_render_timeline_box($post) {
 
-    // Optional: Nur anzeigen, wenn Seite einen Seitenbesitzer hat (ACF)
-    if (function_exists('get_field')) {
-        $owner = (int) get_field('seitenbesitzer', $post->ID);
-        if (!$owner) {
-            echo '<p style="opacity:.7;">' . esc_html__('Keine Timeline (kein Seitenbesitzer gesetzt).', 'clarityphase') . '</p>';
-            return;
-        }
+    $context_id = (int) $post->ID;
+    $project_id = function_exists('cp_get_project_id_from_context') ? (int) cp_get_project_id_from_context($context_id) : 0;
+    $timeline_post_id = function_exists('cp_get_timeline_post_id') ? (int) cp_get_timeline_post_id($project_id ?: $context_id) : $context_id;
+    $owner_id = function_exists('cp_get_owner_id_from_context') ? (int) cp_get_owner_id_from_context($context_id) : 0;
+
+    if (!$project_id && get_post_type($context_id) !== 'cp_project') {
+        echo '<p style="opacity:.7;">' . esc_html__('Keine ClarityPhase Timeline für diese Seite.', 'clarityphase') . '</p>';
+        return;
     }
 
-    $comments = get_comments([
-        'post_id' => $post->ID,
+    wp_nonce_field('cp_customer_comment_save', 'cp_customer_comment_nonce');
+
+    echo '<div style="margin:0 0 18px;padding:14px;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#f8fafc;">';
+    echo '<label for="cp_customer_comment" style="display:block;font-weight:800;margin-bottom:8px;">' . esc_html__('Kommentar an Kunden senden', 'clarityphase') . '</label>';
+    echo '<textarea id="cp_customer_comment" name="cp_customer_comment" rows="4" style="width:100%;max-width:900px;" placeholder="' . esc_attr__('Kommentar oder Hinweis an den Kunden schreiben…', 'clarityphase') . '"></textarea>';
+    echo '<p style="margin:8px 0 0;opacity:.75;">' . esc_html__('Beim Speichern wird der Kommentar in der Historie abgelegt und per E-Mail an den Kunden gesendet.', 'clarityphase') . '</p>';
+    echo '<p style="margin:10px 0 0;"><button type="submit" class="button button-primary" name="cp_send_customer_comment" value="1">' . esc_html__('Kommentar an Kunden senden', 'clarityphase') . '</button></p>';
+
+    if (!$owner_id) {
+        echo '<p style="margin:10px 0 0;color:#b45309;font-weight:700;">' . esc_html__('Hinweis: Es ist kein Kunde/Seitenbesitzer zugeordnet. Der Kommentar kann gespeichert werden, aber es wird keine Kundenmail versendet.', 'clarityphase') . '</p>';
+    }
+
+    echo '</div>';
+
+    $comments = $timeline_post_id ? get_comments([
+        'post_id' => $timeline_post_id,
         'type'    => 'clarityphase',
         'status'  => 'approve',
         'number'  => 50,
         'orderby' => 'comment_date_gmt',
         'order'   => 'DESC',
-    ]);
+    ]) : [];
 
     if (!$comments) {
         echo '<p style="opacity:.7;">' . esc_html__('Noch keine Einträge.', 'clarityphase') . '</p>';
@@ -1873,6 +1998,27 @@ function cp_render_timeline_box($post) {
 
     echo '</div>';
 }
+
+if (!function_exists('cp_handle_customer_comment_save')) {
+function cp_handle_customer_comment_save($post_id) {
+
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (wp_is_post_revision($post_id)) return;
+    if (!current_user_can('edit_post', $post_id)) return;
+
+    if (empty($_POST['cp_send_customer_comment'])) return;
+    if (empty($_POST['cp_customer_comment_nonce']) || !wp_verify_nonce($_POST['cp_customer_comment_nonce'], 'cp_customer_comment_save')) return;
+
+    $comment_text = isset($_POST['cp_customer_comment']) ? wp_kses_post(trim((string) $_POST['cp_customer_comment'])) : '';
+    if ($comment_text === '') return;
+
+    if (function_exists('cp_send_customer_comment_notification')) {
+        cp_send_customer_comment_notification((int) $post_id, $comment_text);
+    }
+}
+}
+add_action('save_post_cp_project', 'cp_handle_customer_comment_save', 30);
+add_action('save_post_page', 'cp_handle_customer_comment_save', 30);
 
 add_action('admin_footer', function () {
     $screen = function_exists('get_current_screen') ? get_current_screen() : null;
